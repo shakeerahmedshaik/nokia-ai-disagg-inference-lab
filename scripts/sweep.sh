@@ -10,6 +10,8 @@ HERE=$(cd "$(dirname "$0")/.." && pwd)
 cd "$HERE"
 BASE_TOKENS=${BASE_TOKENS:-512}
 NEW=16
+REPS=${REPS:-1}                       # repeat each row of the mode group (the host CPU is shared, so timings are noisy)
+PACES=${PACES:-"off 100mbit 60mbit"}   # tbf rates for the pacing group
 
 discards() {
   for n in leaf1 leaf2; do
@@ -51,8 +53,8 @@ row() {
     awk '$1=="spine1"&&$2=="ethernet-1/1"{a=$4} $1=="spine2"&&$2=="ethernet-1/1"{b=$4} END {printf "%s/%s", a, b}')
   local match=NO
   [ "$gen" = "$ref" ] && [ "$(field "$pf" kv_crc32)" = "$(field "$dc" kv_crc32)" ] && match=yes
-  printf '%-16s tokens=%-5s kv_MB=%-6.1f wire_MB=%-7.1f wire/kv=%-5.2f prefill_ms=%-7.0f exposed_xfer_ms=%-7.0f ttft_ms=%-7.0f spine1/spine2_MB=%-11s leaf_discards=%-6s tokens_and_kv_match=%s\n' \
-    "$label" "$tokens" "$(echo "$kvb/1000000" | bc -l)" "$(echo "$bytes/1000000" | bc -l)" \
+  printf '%-16s kv_MB=%-6.1f wire_MB=%-7.1f wire/kv=%-5.2f prefill_ms=%-7.0f exposed_xfer_ms=%-7.0f ttft_ms=%-7.0f spine1/spine2_MB=%-11s leaf_discards=%-6s tokens_and_kv_match=%s\n' \
+    "$label" "$(echo "$kvb/1000000" | bc -l)" "$(echo "$bytes/1000000" | bc -l)" \
     "$(echo "$bytes/$kvb" | bc -l)" "$(field "$pf" prefill_ms)" "$(field "$pf" exposed_transfer_ms)" \
     "$(field "$dc" ttft_ms)" "$split" "$((d1 - d0))" "$match"
 }
@@ -70,9 +72,9 @@ has dtype && { echo "## KV dtype (tokens=$BASE_TOKENS)"
 has channels && { echo "## RC QPs (channels) (tokens=$BASE_TOKENS)"
   for c in 1 2 4; do row "channels=$c" "$BASE_TOKENS" fp32 roce --channels "$c"; done; }
 has mode && { echo "## bulk vs layerwise push (tokens=$BASE_TOKENS)"
-  for m in bulk layerwise; do row "mode=$m" "$BASE_TOKENS" fp32 roce --mode "$m"; done; }
+  for i in $(seq "$REPS"); do for m in bulk layerwise; do row "mode=$m#$i" "$BASE_TOKENS" fp32 roce --mode "$m"; done; done; }
 has pacing && { echo "## sender pacing on both workers (tokens=$BASE_TOKENS)"
-  for r in off 100mbit 60mbit; do bash scripts/pace.sh "$r" >/dev/null; row "pace=$r" "$BASE_TOKENS" fp32 roce; done
+  for r in $PACES; do bash scripts/pace.sh "$r" >/dev/null; row "pace=$r" "$BASE_TOKENS" fp32 roce; done
   bash scripts/pace.sh off >/dev/null; }
 has delay && { echo "## netem delay on decode eth1 (tokens=$BASE_TOKENS)"
   for d in 0 5 20; do
