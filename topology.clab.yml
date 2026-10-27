@@ -1,0 +1,90 @@
+# Disaggregated AI inference packet lab: a prefill worker and a decode worker on a minimal SR Linux Clos.
+#
+#        spine1 10.0.0.1 (AS65100)          spine2 10.0.0.2 (AS65100)
+#          e1-1 |       \ e1-2           e1-1 /       | e1-2
+#               |        \__________________/         |
+#               |         /                \          |
+#          e1-1 |        / e1-2        e1-1 \         | e1-2
+#        leaf1 10.0.1.1 (AS65001)          leaf2 10.0.1.2 (AS65002)
+#               | e1-10  gw 10.10.1.1             | e1-10  gw 10.10.2.1
+#        prefill 10.10.1.2/24 (rxe_p)      decode 10.10.2.2/24 (rxe_d)
+#
+# eBGP underlay over /31s, 2-way ECMP leaf -> spine. The KV cache built by a real small LLM on the
+# prefill worker moves to the decode worker as RoCEv2 RDMA WRITE (UDP/4791, DSCP 26, ECT(0)) from
+# Soft-RoCE (rxe) on each worker's eth1. Model weights are bind-mounted read-only at /models
+# (bash scripts/fetch-model.sh once on the host).
+# Host needs: sudo modprobe rdma_rxe ib_uverbs sch_netem.
+# Switch type ixr-h5-64o (7220 IXR-H5-64O, TH5) stands in for TH6: the 26.7.2 image knows
+# ixr-h6 (7220 IXR-H6-64) but shuts it down after boot without a license. With a license file,
+# set type: ixr-h6 and add license: <file> on the four switches. SR Linux here is a virtual
+# forwarding model, not Tomahawk silicon.
+name: ai-inference
+
+mgmt:
+  network: ai-inference-mgmt
+  ipv4-subnet: 172.30.41.0/24
+
+topology:
+  kinds:
+    nokia_srlinux:
+      image: ${SRL_IMAGE:=ghcr.io/nokia/srlinux:26.7.2}
+    linux:
+      image: python:3.11-slim
+
+  nodes:
+    spine1:
+      kind: nokia_srlinux
+      type: ixr-h5-64o
+      startup-config: configs/spine1.cli
+      labels:
+        graph-level: 1
+        graph-icon: spine
+    spine2:
+      kind: nokia_srlinux
+      type: ixr-h5-64o
+      startup-config: configs/spine2.cli
+      labels:
+        graph-level: 1
+        graph-icon: spine
+    leaf1:
+      kind: nokia_srlinux
+      type: ixr-h5-64o
+      startup-config: configs/leaf1.cli
+      labels:
+        graph-level: 2
+        graph-icon: leaf
+    leaf2:
+      kind: nokia_srlinux
+      type: ixr-h5-64o
+      startup-config: configs/leaf2.cli
+      labels:
+        graph-level: 2
+        graph-icon: leaf
+    prefill:
+      kind: linux
+      cmd: sleep infinity
+      binds:
+        - ./app:/lab/app:ro
+        - ./prompts:/lab/prompts:ro
+        - ./models:/models:ro
+      labels:
+        graph-level: 3
+        graph-icon: host
+    decode:
+      kind: linux
+      cmd: sleep infinity
+      binds:
+        - ./app:/lab/app:ro
+        - ./prompts:/lab/prompts:ro
+        - ./models:/models:ro
+      labels:
+        graph-level: 3
+        graph-icon: host
+
+  links:
+    - endpoints: ["spine1:e1-1", "leaf1:e1-1"]
+    - endpoints: ["spine2:e1-1", "leaf1:e1-2"]
+    - endpoints: ["spine1:e1-2", "leaf2:e1-1"]
+    - endpoints: ["spine2:e1-2", "leaf2:e1-2"]
+    - endpoints: ["leaf1:e1-10", "prefill:eth1"]
+    - endpoints: ["leaf2:e1-10", "decode:eth1"]

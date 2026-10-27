@@ -1,0 +1,27 @@
+== clab-ai-inference-prefill: installing packages (apt rdma-core/pyverbs + CPU PyTorch + transformers)
+== clab-ai-inference-decode: installing packages (apt rdma-core/pyverbs + CPU PyTorch + transformers)
+== clab-ai-inference-prefill: eth1 10.10.1.2/24 via 10.10.1.1, Soft-RoCE device rxe_p
+== clab-ai-inference-decode: eth1 10.10.2.2/24 via 10.10.2.1, Soft-RoCE device rxe_d
+link rxe_p/1 state ACTIVE physical_state LINK_UP netdev eth1 
+link rxe_d/1 state ACTIVE physical_state LINK_UP 
+torch 2.14.1+cpu transformers 4.46.3
+== waiting for 4 established BGP sessions
+   4/4 sessions established
+== RoCE QoS (DSCP 26 RoCE data class with ECN, DSCP 48 CNP strict priority)
+   leaf1: committed
+   leaf2: committed
+   spine1: committed
+   spine2: committed
+== ECMP check on leaf1 for 10.10.2.0/24
+10.10.2.0/24         bgp          0        170     >        192.168.11.1(route:local)                                                                                                               
+                                                            192.168.12.1(route:local)
+   2 ECMP next-hops installed
+== ping prefill -> decode
+PING 10.10.2.2 (10.10.2.2) 56(84) bytes of data.
+64 bytes from 10.10.2.2: icmp_seq=1 ttl=61 time=15.1 ms
+64 bytes from 10.10.2.2: icmp_seq=2 ttl=61 time=6.36 ms
+64 bytes from 10.10.2.2: icmp_seq=3 ttl=61 time=4.91 ms
+
+--- 10.10.2.2 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2002ms
+rtt min/avg/max/mdev = 4.906/8.790/15.108/4.506 ms
