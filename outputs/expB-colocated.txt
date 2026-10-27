@@ -1,0 +1,5 @@
+===== prefill /tmp/infer.log
+role=colocated model=SmolLM2-135M layers=30 kv_heads=3 head_dim=64 load_s=0.6 threads=4 weights_checksum=-13334.434612
+role=colocated req=0 prompt_tokens=128 kv_dtype=fp32 kv_bytes=5898240 prefill_ms=661.30 pack_ms=3.42 unpack_ms=1.04 ttft_ms=661.30 kv_crc32=e9051a60 kv_checksum=-24789.118727 itl_mean_ms=62.67 itl_p50_ms=54.95 itl_max_ms=179.53
+role=colocated req=0 generated_ids=[253, 2244, 5595, 30, 378, 5595, 13766, 288, 253, 2244, 5994, 30, 378, 5994, 13766, 288, 253, 2244, 5595, 30, 378, 5595, 13766, 288, 253, 2244, 5994, 30, 378, 5994, 13766, 288]
+role=colocated req=0 text=' a single edge. The edge connects to a single node. The node connects to a single edge. The edge connects to a single node. The node connects to'

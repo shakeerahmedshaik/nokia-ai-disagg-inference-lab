@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# Section 8 sweeps, one variable at a time, RoCEv2 transport. Each run captures headers on
-# prefill eth1 (original frame lengths are kept) and prints one summary row.
+# One-variable-at-a-time sweeps. Each row is one disaggregated request (16 new tokens) with a header capture on
+# prefill eth1, checked against a colocated reference of the same prompt length and KV dtype.
+# Usage: scripts/sweep.sh [group...]   groups: tokens dtype channels mode pacing delay transport (default: all)
+# Output: one summary row per run. Redirect to outputs/sweeps.txt.
 set -euo pipefail
 
 LAB=clab-ai-inference
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 cd "$HERE"
+BASE_TOKENS=${BASE_TOKENS:-512}
+NEW=16
 
 discards() {
   for n in leaf1 leaf2; do
@@ -13,50 +17,69 @@ discards() {
   done | awk '{s+=$1} END {print s}'
 }
 
-row() {
-  local label=$1; shift
-  local d0 d1
-  d0=$(discards)
-  bash scripts/capture.sh start sweep --snap 96 >/dev/null
-  bash run.sh train.py "$@" --wait > /tmp/sweep-run.txt
-  bash scripts/capture.sh stop sweep >/dev/null
-  d1=$(discards)
-  local log params gbytes step_ms ar_ms frames bytes ck
-  log=$(sed -n '/prefill/,/decode/p' /tmp/sweep-run.txt)
-  params=$(grep -oP 'params=\K[0-9]+' <<<"$log" | head -1)
-  gbytes=$(grep -oP 'gradient_bytes_FP32=\K[0-9]+' <<<"$log" | head -1)
-  step_ms=$(grep -oP 'step=[0-9]+ .*compute_ms=\K[0-9.]+' <<<"$log" | awk '{s+=$1;n++} END {printf "%.1f", n ? s/n : 0}')
-  ar_ms=$(grep -oP 'step=[0-9]+ .*allreduce_ms=\K[0-9.]+' <<<"$log" | awk '{s+=$1;n++} END {printf "%.0f", n ? s/n : 0}')
-  docker cp captures/sweep.pcap "$LAB-prefill:/tmp/sweep-a.pcap" >/dev/null
-  read -r frames bytes < <(docker exec "$LAB-prefill" tshark -r /tmp/sweep-a.pcap -Y "udp.dstport==4791" \
-    -T fields -e frame.len 2>/dev/null | awk '{n++; s+=$1} END {print n+0, s+0}')
-  ck=$(grep -oP 'final model_checksum=\K\S+' /tmp/sweep-run.txt | sort -u | wc -l)
-  printf '%-16s params=%-8s grad_MB=%-6.1f wire_MB=%-7.1f roce_frames=%-7s mean_compute_ms=%-6s mean_allreduce_ms=%-6s leaf_discards=%-6s checksums_match=%s\n' \
-    "$label" "$params" "$(echo "$gbytes/1000000" | bc -l)" "$(echo "$bytes/1000000" | bc -l)" "$frames" \
-    "$step_ms" "$ar_ms" "$((d1 - d0))" "$([ "$ck" = 1 ] && echo yes || echo NO)"
+field() { grep -oP "$2=\K\S+" <<<"$1" | head -1; }
+
+# Colocated reference ids for (tokens, dtype), cached for the sweep.
+ref_ids() {
+  local f=/tmp/sweep-ref-$1-$2.txt
+  [ -s "$f" ] || bash run.sh infer.py --role colocated --prompt-tokens "$1" --max-new-tokens $NEW --kv-dtype "$2" --wait |
+    grep -oP 'generated_ids=\K.*' | head -1 > "$f"
+  cat "$f"
 }
 
+row() {
+  local label=$1 tokens=$2 dtype=$3 transport=$4; shift 4
+  local ref d0 d1 flt
+  ref=$(ref_ids "$tokens" "$dtype")
+  bash scripts/fabric.sh counters > /tmp/sweep-c0.txt
+  d0=$(discards)
+  bash scripts/capture.sh start sweep --snap 96 >/dev/null
+  bash run.sh infer.py --prompt-tokens "$tokens" --max-new-tokens $NEW --kv-dtype "$dtype" --transport "$transport" "$@" --wait > /tmp/sweep-run.txt
+  bash scripts/capture.sh stop sweep >/dev/null
+  d1=$(discards)
+  bash scripts/fabric.sh counters > /tmp/sweep-c1.txt
+  local pf dc gen kvb frames bytes split
+  pf=$(grep 'role=prefill req=0 prompt' /tmp/sweep-run.txt)
+  dc=$(grep 'role=decode req=0 prompt' /tmp/sweep-run.txt)
+  gen=$(grep -oP 'role=decode req=0 generated_ids=\K.*' /tmp/sweep-run.txt | head -1)
+  kvb=$(field "$pf" kv_bytes)
+  flt="udp.dstport==4791"; [ "$transport" = tcp ] && flt="tcp.port==29600"
+  docker cp captures/sweep.pcap "$LAB-prefill:/tmp/sweep-a.pcap" >/dev/null
+  read -r frames bytes < <(docker exec "$LAB-prefill" tshark -r /tmp/sweep-a.pcap -Y "$flt" -T fields -e frame.len 2>/dev/null |
+    awk '{n++; s+=$1} END {print n+0, s+0}')
+  split=$(python3 scripts/ecmp-delta.py /tmp/sweep-c0.txt /tmp/sweep-c1.txt |
+    awk '$1=="spine1"&&$2=="ethernet-1/1"{a=$4} $1=="spine2"&&$2=="ethernet-1/1"{b=$4} END {printf "%s/%s", a, b}')
+  local match=NO
+  [ "$gen" = "$ref" ] && [ "$(field "$pf" kv_crc32)" = "$(field "$dc" kv_crc32)" ] && match=yes
+  printf '%-16s tokens=%-5s kv_MB=%-6.1f wire_MB=%-7.1f wire/kv=%-5.2f prefill_ms=%-7.0f exposed_xfer_ms=%-7.0f ttft_ms=%-7.0f spine1/spine2_MB=%-11s leaf_discards=%-6s tokens_and_kv_match=%s\n' \
+    "$label" "$tokens" "$(echo "$kvb/1000000" | bc -l)" "$(echo "$bytes/1000000" | bc -l)" \
+    "$(echo "$bytes/$kvb" | bc -l)" "$(field "$pf" prefill_ms)" "$(field "$pf" exposed_transfer_ms)" \
+    "$(field "$dc" ttft_ms)" "$split" "$((d1 - d0))" "$match"
+}
+
+groups=("$@"); [ ${#groups[@]} -gt 0 ] || groups=(tokens dtype channels mode pacing delay transport)
+has() { local g; for g in "${groups[@]}"; do [ "$g" = "$1" ] && return 0; done; return 1; }
+
 bash scripts/pace.sh off >/dev/null
-
-echo "## hidden (features=1024, steps=20, batch=32)"
-for h in 256 2048 4096; do row "hidden=$h" --steps 20 --features 1024 --hidden "$h"; done
-
-echo "## steps (hidden=2048)"
-for s in 1 20; do row "steps=$s" --steps "$s" --features 1024 --hidden 2048; done
-
-echo "## batch (hidden=2048, steps=20)"
-for b in 8 64; do row "batch=$b" --steps 20 --features 1024 --hidden 2048 --batch "$b"; done
-
-echo "## sender pacing on both workers (hidden=2048, steps=20)"
-for r in off 100mbit 60mbit; do
-  bash scripts/pace.sh "$r" >/dev/null
-  row "pace=$r" --steps 20 --features 1024 --hidden 2048
-done
-bash scripts/pace.sh off >/dev/null
-
-echo "## netem delay on decode eth1 (hidden=2048, steps=20)"
-for d in 0 5 20; do
-  if [ "$d" = 0 ]; then bash scripts/netem.sh del >/dev/null; else bash scripts/netem.sh add "$d" >/dev/null; fi
-  row "delay=${d}ms" --steps 20 --features 1024 --hidden 2048
-done
 bash scripts/netem.sh del >/dev/null
+
+has tokens && { echo "## prompt length (fp32, 2 channels, bulk)"
+  for t in 32 128 512 1024; do row "tokens=$t" "$t" fp32 roce; done; }
+has dtype && { echo "## KV dtype (tokens=$BASE_TOKENS)"
+  for d in fp32 fp16; do row "dtype=$d" "$BASE_TOKENS" "$d" roce; done; }
+has channels && { echo "## RC QPs (channels) (tokens=$BASE_TOKENS)"
+  for c in 1 2 4; do row "channels=$c" "$BASE_TOKENS" fp32 roce --channels "$c"; done; }
+has mode && { echo "## bulk vs layerwise push (tokens=$BASE_TOKENS)"
+  for m in bulk layerwise; do row "mode=$m" "$BASE_TOKENS" fp32 roce --mode "$m"; done; }
+has pacing && { echo "## sender pacing on both workers (tokens=$BASE_TOKENS)"
+  for r in off 100mbit 60mbit; do bash scripts/pace.sh "$r" >/dev/null; row "pace=$r" "$BASE_TOKENS" fp32 roce; done
+  bash scripts/pace.sh off >/dev/null; }
+has delay && { echo "## netem delay on decode eth1 (tokens=$BASE_TOKENS)"
+  for d in 0 5 20; do
+    if [ "$d" = 0 ]; then bash scripts/netem.sh del >/dev/null; else bash scripts/netem.sh add "$d" >/dev/null; fi
+    row "delay=${d}ms" "$BASE_TOKENS" fp32 roce
+  done
+  bash scripts/netem.sh del >/dev/null; }
+has transport && { echo "## RoCEv2 RDMA WRITE vs TCP (tokens=$BASE_TOKENS)"
+  for t in roce tcp; do row "transport=$t" "$BASE_TOKENS" fp32 "$t"; done; }
+true
