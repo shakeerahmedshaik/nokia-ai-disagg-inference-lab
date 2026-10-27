@@ -1,7 +1,0 @@
-## bulk vs layerwise push (tokens=512)
-mode=bulk#1      kv_MB=23.6   wire_MB=82.8    wire/kv=3.51  prefill_ms=5171    exposed_xfer_ms=1975    ttft_ms=7223    spine1/spine2_MB=24.3/26.9   leaf_discards=6934   tokens_and_kv_match=yes
-mode=layerwise#1 kv_MB=23.6   wire_MB=87.6    wire/kv=3.71  prefill_ms=6653    exposed_xfer_ms=243     ttft_ms=6951    spine1/spine2_MB=25.0/23.0   leaf_discards=8827   tokens_and_kv_match=yes
-mode=bulk#2      kv_MB=23.6   wire_MB=93.9    wire/kv=3.98  prefill_ms=5753    exposed_xfer_ms=2808    ttft_ms=8657    spine1/spine2_MB=0.0/52.7    leaf_discards=8885   tokens_and_kv_match=yes
-mode=layerwise#2 kv_MB=23.6   wire_MB=90.6    wire/kv=3.84  prefill_ms=6516    exposed_xfer_ms=283     ttft_ms=6849    spine1/spine2_MB=49.4/0.0    leaf_discards=9139   tokens_and_kv_match=yes
-mode=bulk#3      kv_MB=23.6   wire_MB=84.5    wire/kv=3.58  prefill_ms=5293    exposed_xfer_ms=2357    ttft_ms=7713    spine1/spine2_MB=25.6/23.0   leaf_discards=8087   tokens_and_kv_match=yes
-mode=layerwise#3 kv_MB=23.6   wire_MB=82.0    wire/kv=3.48  prefill_ms=6933    exposed_xfer_ms=214     ttft_ms=7189    spine1/spine2_MB=26.0/23.9   leaf_discards=7097   tokens_and_kv_match=yes

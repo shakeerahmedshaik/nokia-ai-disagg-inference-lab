@@ -26,6 +26,7 @@ ROCE_DSCP = 26
 ECT0 = 0b10
 PORT = 1
 TCP_DATA_PORT = 29600
+POLL_SLEEP = 0.0005
 
 
 def stripes(offset, nbytes, parts):
@@ -163,8 +164,10 @@ class RoceTransport:
         """Sender: wait until every WRITE is acknowledged by the responder (RC ACK)."""
         deadline = time.monotonic() + timeout
         while self.inflight:
-            if not self._poll() and time.monotonic() > deadline:
-                raise TimeoutError(f"{self.inflight} WRITEs unacknowledged")
+            if not self._poll():
+                time.sleep(POLL_SLEEP)   # the two workers share one host: do not burn a core while waiting
+                if time.monotonic() > deadline:
+                    raise TimeoutError(f"{self.inflight} WRITEs unacknowledged")
 
     def wait_data(self, expected, timeout=300.0):
         """Receiver: wait for `expected` WRITE-with-immediate completions. Returns arrival timestamps."""
@@ -178,8 +181,10 @@ class RoceTransport:
 
         deadline = time.monotonic() + timeout
         while got < expected:
-            if not self._poll(on_recv) and time.monotonic() > deadline:
-                raise TimeoutError(f"received {got}/{expected} completions")
+            if not self._poll(on_recv):
+                time.sleep(POLL_SLEEP)
+                if time.monotonic() > deadline:
+                    raise TimeoutError(f"received {got}/{expected} completions")
         return {"t_first": first, "t_last": time.time(), "messages": got, "tags": len(per_tag)}
 
     def close_request(self):

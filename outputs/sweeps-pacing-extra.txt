@@ -1,5 +1,0 @@
-## sender pacing on both workers (tokens=512)
-pace=150mbit     kv_MB=23.6   wire_MB=27.3    wire/kv=1.16  prefill_ms=5417    exposed_xfer_ms=1465    ttft_ms=7029    spine1/spine2_MB=0.0/27.2    leaf_discards=21     tokens_and_kv_match=yes
-pace=200mbit     kv_MB=23.6   wire_MB=31.1    wire/kv=1.32  prefill_ms=5383    exposed_xfer_ms=1253    ttft_ms=6693    spine1/spine2_MB=0.0/30.8    leaf_discards=14     tokens_and_kv_match=yes
-pace=300mbit     kv_MB=23.6   wire_MB=31.9    wire/kv=1.35  prefill_ms=3504    exposed_xfer_ms=865     ttft_ms=4417    spine1/spine2_MB=15.5/15.8   leaf_discards=34     tokens_and_kv_match=yes
-pace=400mbit     kv_MB=23.6   wire_MB=48.5    wire/kv=2.05  prefill_ms=3933    exposed_xfer_ms=1345    ttft_ms=5336    spine1/spine2_MB=26.3/18.2   leaf_discards=542    tokens_and_kv_match=yes
