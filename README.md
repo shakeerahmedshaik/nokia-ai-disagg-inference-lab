@@ -10,7 +10,15 @@ This lab reproduces that handoff end to end with no GPUs and no RDMA NICs, and f
 
 The lab then measures what an AI fabric engineer cares about: whether the answer after the handoff is exactly the answer without it, how much of the first-token time is the network, wire bytes compared with KV bytes, per-QP ECMP placement, loss and go-back-N retransmission, the effect of sender pacing, layer-by-layer streaming, and a spine-link failure in the middle of a transfer.
 
-The background lessons are in [ai-inference-learning-bytes](https://github.com/shakeerahmedshaik/ai-inference-learning-bytes) (Lessons 03 and 04). An **interactive walkthrough** of one request on the wire is in `docs/index.html`; open it with `python3 -m http.server -d docs` and browse to `http://localhost:8000`. The repository is private, so GitHub Pages is not enabled.
+The background lessons are in [ai-inference-learning-bytes](https://github.com/shakeerahmedshaik/ai-inference-learning-bytes) (Lessons 03 and 04).
+
+**[Interactive walkthrough](docs/index.html)** of one request on the wire: each phase on the Clos diagram, per-opcode frame anatomy and the result charts, using the data in [`outputs/`](outputs). The repository is private and GitHub Pages is not enabled, so GitHub only shows the page's source. To view it, clone the repo and run:
+
+```bash
+bash scripts/serve-docs.sh        # serves docs/ on http://localhost:8000
+```
+
+If the repo is cloned on a remote host, forward the port first (for example `ssh -L 8000:localhost:8000 <host>`), then open `http://localhost:8000`. The page is one self-contained file (no CDN), so opening `docs/index.html` directly in a browser also works.
 
 ## Topology
 
@@ -269,6 +277,7 @@ docker exec -it clab-ai-inference-decode bash
 | `scripts/pace.sh <rate>\|off` | Token-bucket pacing on both workers (stands in for NIC rate control) |
 | `scripts/netem.sh add <ms>\|del` | netem delay on `decode` eth1 |
 | `scripts/fetch-model.sh [hf-repo]` | Download the model once on the host |
+| `scripts/serve-docs.sh [port]` | Serve the interactive walkthrough (`docs/index.html`) on `http://localhost:8000` |
 
 `infer.py` options: `--role prefill|decode|colocated`, `--prompt-tokens N`, `--max-new-tokens N`, `--kv-dtype fp32|fp16`, `--mode bulk|layerwise`, `--channels N`, `--transport roce|tcp`, `--requests N`, `--control zero-kv` (decode only: throw the received KV away).
 
