@@ -1,0 +1,2073 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+    name: ai-inference
+    labels:
+        pod-security.kubernetes.io/enforce: privileged
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: ai-inference-spine1-startup-config
+    namespace: ai-inference
+data:
+  startup-config: |-
+    set / interface ethernet-1/1 admin-state enable
+    set / interface ethernet-1/1 subinterface 0 ip-mtu 9000
+    set / interface ethernet-1/1 subinterface 0 ipv4 admin-state enable
+    set / interface ethernet-1/1 subinterface 0 ipv4 address 192.168.11.1/31
+    set / interface ethernet-1/2 admin-state enable
+    set / interface ethernet-1/2 subinterface 0 ip-mtu 9000
+    set / interface ethernet-1/2 subinterface 0 ipv4 admin-state enable
+    set / interface ethernet-1/2 subinterface 0 ipv4 address 192.168.21.1/31
+    set / interface system0 admin-state enable
+    set / interface system0 subinterface 0 ipv4 admin-state enable
+    set / interface system0 subinterface 0 ipv4 address 10.0.0.1/32
+
+    set / network-instance default interface ethernet-1/1.0
+    set / network-instance default interface ethernet-1/2.0
+    set / network-instance default interface system0.0
+
+    set / routing-policy policy ACCEPT-ALL default-action policy-result accept
+
+    set / network-instance default protocols bgp admin-state enable
+    set / network-instance default protocols bgp autonomous-system 65100
+    set / network-instance default protocols bgp router-id 10.0.0.1
+    set / network-instance default protocols bgp afi-safi ipv4-unicast admin-state enable
+    set / network-instance default protocols bgp afi-safi ipv4-unicast multipath ebgp maximum-paths 2
+    set / network-instance default protocols bgp group leaves import-policy [ ACCEPT-ALL ]
+    set / network-instance default protocols bgp group leaves export-policy [ ACCEPT-ALL ]
+    set / network-instance default protocols bgp neighbor 192.168.11.0 peer-group leaves
+    set / network-instance default protocols bgp neighbor 192.168.11.0 peer-as 65001
+    set / network-instance default protocols bgp neighbor 192.168.21.0 peer-group leaves
+    set / network-instance default protocols bgp neighbor 192.168.21.0 peer-as 65002
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: ai-inference-spine2-startup-config
+    namespace: ai-inference
+data:
+  startup-config: |-
+    set / interface ethernet-1/1 admin-state enable
+    set / interface ethernet-1/1 subinterface 0 ip-mtu 9000
+    set / interface ethernet-1/1 subinterface 0 ipv4 admin-state enable
+    set / interface ethernet-1/1 subinterface 0 ipv4 address 192.168.12.1/31
+    set / interface ethernet-1/2 admin-state enable
+    set / interface ethernet-1/2 subinterface 0 ip-mtu 9000
+    set / interface ethernet-1/2 subinterface 0 ipv4 admin-state enable
+    set / interface ethernet-1/2 subinterface 0 ipv4 address 192.168.22.1/31
+    set / interface system0 admin-state enable
+    set / interface system0 subinterface 0 ipv4 admin-state enable
+    set / interface system0 subinterface 0 ipv4 address 10.0.0.2/32
+
+    set / network-instance default interface ethernet-1/1.0
+    set / network-instance default interface ethernet-1/2.0
+    set / network-instance default interface system0.0
+
+    set / routing-policy policy ACCEPT-ALL default-action policy-result accept
+
+    set / network-instance default protocols bgp admin-state enable
+    set / network-instance default protocols bgp autonomous-system 65100
+    set / network-instance default protocols bgp router-id 10.0.0.2
+    set / network-instance default protocols bgp afi-safi ipv4-unicast admin-state enable
+    set / network-instance default protocols bgp afi-safi ipv4-unicast multipath ebgp maximum-paths 2
+    set / network-instance default protocols bgp group leaves import-policy [ ACCEPT-ALL ]
+    set / network-instance default protocols bgp group leaves export-policy [ ACCEPT-ALL ]
+    set / network-instance default protocols bgp neighbor 192.168.12.0 peer-group leaves
+    set / network-instance default protocols bgp neighbor 192.168.12.0 peer-as 65001
+    set / network-instance default protocols bgp neighbor 192.168.22.0 peer-group leaves
+    set / network-instance default protocols bgp neighbor 192.168.22.0 peer-as 65002
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: ai-inference-leaf1-startup-config
+    namespace: ai-inference
+data:
+  startup-config: |-
+    set / interface ethernet-1/1 admin-state enable
+    set / interface ethernet-1/1 subinterface 0 ip-mtu 9000
+    set / interface ethernet-1/1 subinterface 0 ipv4 admin-state enable
+    set / interface ethernet-1/1 subinterface 0 ipv4 address 192.168.11.0/31
+    set / interface ethernet-1/2 admin-state enable
+    set / interface ethernet-1/2 subinterface 0 ip-mtu 9000
+    set / interface ethernet-1/2 subinterface 0 ipv4 admin-state enable
+    set / interface ethernet-1/2 subinterface 0 ipv4 address 192.168.12.0/31
+    set / interface ethernet-1/10 admin-state enable
+    set / interface ethernet-1/10 subinterface 0 ip-mtu 9000
+    set / interface ethernet-1/10 subinterface 0 ipv4 admin-state enable
+    set / interface ethernet-1/10 subinterface 0 ipv4 address 10.10.1.1/24
+    set / interface system0 admin-state enable
+    set / interface system0 subinterface 0 ipv4 admin-state enable
+    set / interface system0 subinterface 0 ipv4 address 10.0.1.1/32
+
+    set / network-instance default interface ethernet-1/1.0
+    set / network-instance default interface ethernet-1/2.0
+    set / network-instance default interface ethernet-1/10.0
+    set / network-instance default interface system0.0
+
+    set / routing-policy policy ACCEPT-ALL default-action policy-result accept
+
+    set / network-instance default protocols bgp admin-state enable
+    set / network-instance default protocols bgp autonomous-system 65001
+    set / network-instance default protocols bgp router-id 10.0.1.1
+    set / network-instance default protocols bgp afi-safi ipv4-unicast admin-state enable
+    set / network-instance default protocols bgp afi-safi ipv4-unicast multipath ebgp maximum-paths 2
+    set / network-instance default protocols bgp group spines import-policy [ ACCEPT-ALL ]
+    set / network-instance default protocols bgp group spines export-policy [ ACCEPT-ALL ]
+    set / network-instance default protocols bgp neighbor 192.168.11.1 peer-group spines
+    set / network-instance default protocols bgp neighbor 192.168.11.1 peer-as 65100
+    set / network-instance default protocols bgp neighbor 192.168.12.1 peer-group spines
+    set / network-instance default protocols bgp neighbor 192.168.12.1 peer-as 65100
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: ai-inference-leaf2-startup-config
+    namespace: ai-inference
+data:
+  startup-config: |-
+    set / interface ethernet-1/1 admin-state enable
+    set / interface ethernet-1/1 subinterface 0 ip-mtu 9000
+    set / interface ethernet-1/1 subinterface 0 ipv4 admin-state enable
+    set / interface ethernet-1/1 subinterface 0 ipv4 address 192.168.21.0/31
+    set / interface ethernet-1/2 admin-state enable
+    set / interface ethernet-1/2 subinterface 0 ip-mtu 9000
+    set / interface ethernet-1/2 subinterface 0 ipv4 admin-state enable
+    set / interface ethernet-1/2 subinterface 0 ipv4 address 192.168.22.0/31
+    set / interface ethernet-1/10 admin-state enable
+    set / interface ethernet-1/10 subinterface 0 ip-mtu 9000
+    set / interface ethernet-1/10 subinterface 0 ipv4 admin-state enable
+    set / interface ethernet-1/10 subinterface 0 ipv4 address 10.10.2.1/24
+    set / interface system0 admin-state enable
+    set / interface system0 subinterface 0 ipv4 admin-state enable
+    set / interface system0 subinterface 0 ipv4 address 10.0.1.2/32
+
+    set / network-instance default interface ethernet-1/1.0
+    set / network-instance default interface ethernet-1/2.0
+    set / network-instance default interface ethernet-1/10.0
+    set / network-instance default interface system0.0
+
+    set / routing-policy policy ACCEPT-ALL default-action policy-result accept
+
+    set / network-instance default protocols bgp admin-state enable
+    set / network-instance default protocols bgp autonomous-system 65002
+    set / network-instance default protocols bgp router-id 10.0.1.2
+    set / network-instance default protocols bgp afi-safi ipv4-unicast admin-state enable
+    set / network-instance default protocols bgp afi-safi ipv4-unicast multipath ebgp maximum-paths 2
+    set / network-instance default protocols bgp group spines import-policy [ ACCEPT-ALL ]
+    set / network-instance default protocols bgp group spines export-policy [ ACCEPT-ALL ]
+    set / network-instance default protocols bgp neighbor 192.168.21.1 peer-group spines
+    set / network-instance default protocols bgp neighbor 192.168.21.1 peer-as 65100
+    set / network-instance default protocols bgp neighbor 192.168.22.1 peer-group spines
+    set / network-instance default protocols bgp neighbor 192.168.22.1 peer-as 65100
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-inference-prefill-files
+  namespace: ai-inference
+data:
+  app-__pycache__-infer.cpython-314.pyc: |-
+    +
+        h!áj+  ã                   ó@  € R t ^ RIt^ RIt^ RIt^ RIt^ RIt^ RIt^ RIHt ^ RI	t	]P                  P                  ^ ]P                  P                  ]P                  P                  ]4      4      4       ^ RIt]P"                  P%                  RR4      t]P"                  P%                  RR4      tR tR tR	 tR
+     tR tRR ltR tR tR tR tR tR t R t!]"R8X  d,   ]	PF                  ! 4       ;_uu_ 4        ]!! 4        RRR4       R# R#   + '       g   i     R# ; i)aK  Disaggregated LLM inference: prefill on one worker, decode on the other, KV cache over RoCEv2.
+
+      --role prefill     process the prompt, build the real KV cache, push it to the decode worker (rank 0, hosts the store)
+      --role decode      receive the KV cache into registered memory, rebuild it, generate tokens (rank 1)
+      --role colocated   prefill and decode in one process with no network: the reference run
+
+    Greedy decoding, fixed seed and thread count, so the colocated and disaggregated runs must produce identical
+    tokens and an identical KV byte checksum. With --kv-dtype fp16 the colocated run quantizes the cache at the same
+    point where the disaggregated run does, so the comparison stays exact.
+
+    Timeline (wall clock, both workers share the host clock):
+      t_req       the request enters prefill
+      prefill_ms  forward pass over the prompt (includes layer-wise pushes when --mode layerwise)
+      kv_ready    the last KV byte is in decode memory (immediate of the last WRITE received)
+      ttft_ms     max(kv_ready, first token published) - t_req: decode emits token 0 once it holds the whole cache
+    N)Ú	timedeltaÚ	MODEL_DIRz/models/SmolLM2-135MÚPROMPT_FILEz/lab/prompts/source.txtc                 ó    € \        V R R7       R# )T)ÚflushN)Úprint)Úmsgs   &Úapp/infer.pyÚlogr
+       "   s   € Ü	ˆ#T×ó    c                  óN   € R P                  R V P                  4        4       4      # )Ú c              3   óp   "  € T F,  w  r\        V\        4      '       d	   V R VR 2MV R V 2x € K.  	  R# 5i)Ú=z.2fN)Ú
+    isinstanceÚfloat)Ú.0ÚkÚvs   &  r	   Ú	<genexpr>Úkvs.<locals>.<genexpr>'   s;   é € ĞbÑWaÉtÈq¤j°´E×&:Ò&:qc˜˜1˜S˜'‘NÀ1À#ÀQÀqÀcÀ
+    ÔJÓWaùs   ‚46)ÚjoinÚitems)Úkws   ,r	   Úkvsr   &   s!   € Ø8‰8ÑbĞWY×W_ÑW_ÔWaÓbÓbĞbr   c            
+          óÔ  € \         P                  ! 4       p V P                  R . RO\        P                  P                  RR4      R7       V P                  R\        ^€R7       V P                  R\        ^R7       V P                  RRR	.RR7       V P                  R
+    RR.RR7       V P                  R\        ^R7       V P                  RRR.RR7       V P                  R\        ^R7       V P                  R\        \        \        P                  P                  RR4      4      R7       V P                  RRR.RRR7       V P                  R\        ^ R7       V P                  4       # )z--roleÚ	colocatedÚROLE)ÚchoicesÚdefaultz--prompt-tokens)Útyper   z--max-new-tokensz
+    --kv-dtypeÚfp32Úfp16z--modeÚbulkÚ	layerwisez
+    --channelsz--transportÚroceÚtcpz
+    --requestsz	--threadsÚTORCH_THREADSÚ4z	--controlÚnoneúzero-kvzSdecode only: ignore the received KV and use zeros, to show the KV carries the state)r   r   Úhelpz--seed)ÚprefillÚdecoder   )ÚargparseÚArgumentParserÚadd_argumentÚosÚenvironÚgetÚintÚ
+    parse_args)Úps    r	   Úparser7   *   s,  € Ü×ÒÓ!€AØ‡NN8Ò%GÔQS×Q[ÑQ[×Q_ÑQ_Ğ`fĞhsÓQt€NÔuØ‡NNĞ$¬3¸€NÔ<Ø‡NNĞ%¬C¸€NÔ<Ø‡NN<¨&°&Ğ)9À6€NÔJØ‡NN8 f¨kĞ%:ÀF€NÔKØ‡NN<¤c°1€NÔ5Ø‡NN=¨6°5¨/À6€NÔJØ‡NN<¤c°1€NÔ5Ø‡NN;¤S´#´b·j±j·n±nÀ_ĞVYÓ6ZÓ2[€NÔ\Ø‡NN;¨°Ğ(;ÀVØmğ ô oà‡NN8¤#¨q€NÔ1Ø<‰<‹>Ğr   c                  ó¨   € ^ RI Hp Hp VP                  \        4      pV P                  \        \
+            P                  R7      P                  4       pW#3# )é    )ÚAutoModelForCausalLMÚAutoTokenizer)Útorch_dtype)Útransformersr:   r;   Úfrom_pretrainedr   ÚtorchÚfloat32Úeval)r:   r;   ÚtokÚmodels       r	   ÚloadrD   ;   s?   € ß@Ø
+    ×
+    'Ñ
+    '¬	Ó
+    2€CØ ×0Ñ0´ÌÏÉĞ0ÓV×[Ñ[Ó]€EØˆ:Ğr   c                 óî   € V ! \        \        4      P                  4       R R7      P                  pVP                  ^,          V8  d#   \        RVP                  ^,           RV 24      hVRRV13,          # )Úpt)Úreturn_tensorszprompt source has only z tokens, need ºNNNN)Úopenr   ÚreadÚ	input_idsÚshapeÚ
+    SystemExit)rB   ÚnÚidss   && r	   Ú
+    prompt_idsrP   B   se   € Ù
+    Œd”;Ó×$Ñ$Ó&°tÔ
+    <×
+    FÑ
+    F€CØ
+    ‡yy…|aÔÜĞ2°3·9±9¸Qµ<°.ÀÈqÈcĞRÓSĞSØˆq"1"ˆu:Ğr   c                 óf  € V UUu. uF1  w  rEV P                   P                  V,          P                  V4      NK3  	  ppp V ! WR ^R7      pV F  pVP                  4        K  	  \	        VP
+                      R,          P                  4       4      # u uppi   T F  pTP                  4        K  	  i ; i)T)rK   Úpast_key_valuesÚ	use_cacheÚnum_logits_to_keep©r9   éÿÿÿÿ)rC   ÚlayersÚregister_forward_hookÚremover4   ÚlogitsÚargmax)rC   rO   ÚcacheÚhooksÚiÚhÚhandlesÚouts   &&&&    r	   Úprefill_forwardrb   I   s“   € ÙJOÔPÉ%Á$À!ˆu{‰{×!Ñ! !Õ$×:Ñ:¸1Ö=É%€GÑPğÙ˜cÀDĞ]^Ô_ˆãˆAØH‰HJñ äˆsz‰z˜%Õ ×'Ñ'Ó)Ó*Ğ*ùó Qøó ˆAØH‰HJò ús   †7BÁB ÂB0c                óŒ  € V.. reTp\        V^,
+              4       F¦  p\        P                  ! 4       p	V ! \        P                  ! V..4      VRR7      p
+    \        V
+    P                  R,          P                  4       4      pVP                  \        P                  ! 4       V	,
+              R,          4       VP                  V4       K¨  	  WV3# )z^Greedy decode. Token 0 is `first` (already known); returns ids and per-token step times in ms.T)rK   rR   rS   éè  rU   )	ÚrangeÚtimeÚperf_counterr?   Útensorr4   rZ   r[   Úappend)rC   rB   r\   ÚfirstÚn_newrO   ÚstepsÚcurÚ_Útra   s   &&&&&      r	   Údecode_looprp   S   s   € à˜"ˆØ
+    €CÜ5˜1•9ÖˆÜ×ÒÓˆÙœeŸlšl¨S¨E¨7Ó3ÀUĞVZÔ[ˆÜ#—*‘*˜UÕ#×*Ñ*Ó,Ó-ˆØ‰”d×'Ò'Ó)¨AÕ-°Õ5Ô6Ø
+    ‰
+    3ñ ğ ˆ:Ğr   c                 ó¬   € V '       g   / # \        V 4      p\        \        P                  ! V 4      V\	        V4      ^,          ,          VR,          R7      # )é   )Úitl_mean_msÚ
+    itl_p50_msÚ
+    itl_max_msrV   )ÚsortedÚdictÚ
+    statisticsÚmeanÚlen)rl   Úss   & r	   Úitl_summaryr|   `   s>   € ßØˆ	Üˆu‹€AÜœJŸOšO¨EÓ2¸qÄÀQÃÈ1Å½~ĞZ[Ğ\^ÕZ_Ô`Ğ`r   c                 óì  € \        V P                  4       EFY  p\        WP                  4      p\        P
+                      ! VP                  VP                  ^,          V P                  4      p\        P                  ! 4       p\        P                  ! 4       p\        W$V4      p\        P                  ! 4       V,
+              R,          p	\        P                  ! VP                  \        P                   R7      P#                  4       p
+    \        P                  ! 4       p\        P$                  ! W¥V4       \        P                  ! 4       V,
+              R,          p\        P                  ! 4       p\        P&                  ! W¥4      p\        P                  ! 4       V,
+              R,          p\)        W!WxV P*                  4      w  rï\-        RV R2\/        RRVP0                  RVP2                  RVP                  RV	R	VR
+    VRV	R\        P4                  ! V
+    4      R R\        P6                  ! W¥4      R /	\9        V4      B ,           4       \-        RV RV 24       \-        RV RVP;                  V4      : 24       EK\  	  R# )é   rd   )Údtypezrole=colocated req=r   Úprompt_tokensÚkv_dtypeÚkv_bytesÚ
+    prefill_msÚpack_msÚ	unpack_msÚttft_msÚkv_crc32Ú08xÚkv_checksumú.6fú generated_ids=ú text=N© )re   ÚrequestsrP   r€   ÚkvÚspec_from_configÚconfigrL   r   rf   rg   ÚDynamicCacherb   r?   ÚzerosÚtotal_bytesÚuint8ÚnumpyÚ
+    pack_cacheÚunpack_cacherp   Úmax_new_tokensr
+       r   Útokensr   Ú
+    slab_crc32Úslab_checksumr|   r-   )ÚargsrB   rC   ÚrrO   ÚspecÚt_reqr\   rj   rƒ   Úslabro   r„   r…   Úgenrl   s   &&&             r	   Úrun_colocatedr£   g   s  € Ü4—=‘=×!ˆÜ˜×0Ñ0Ó1ˆÜ×"Ò" 5§<¡<°·±¸1µ¸t¿}¹}ÓMˆÜ×!Ò!Ó#ˆÜ—’Ó!ˆÜ ¨EÓ2ˆÜ×'Ò'Ó)¨EÕ1°TÕ9ˆ
+    ä{Š{˜4×+Ñ+´5·;±;Ô?×EÑEÓGˆÜ×ÒÓˆÜ
+    Šd %Ô(Ü×$Ò$Ó&¨Õ*¨dÕ2ˆÜ×ÒÓˆÜ—’ Ó+ˆÜ×&Ò&Ó(¨1Õ,°Õ4ˆ	Ü  ¨U¸4×;NÑ;NÓO‰
+    ˆÜĞ! !  AĞ&¬ñ *"¸4¿;¹;ğ *"ĞQU×Q[ÑQ[ğ *"Ğfj×fvÑfvğ *"Ø!ğ*"Ø+2ğ*"Ø>Gğ*"ØQ[ğ*"äŸš dÓ+¨CĞ0ğ*"äBD×BRÒBRĞSWÓB^Ğ_bĞAcğ*"ô ˜%Ó ñ*"õ "ô 	#ô 	Ğ! !  O°C°5Ğ9Ô:ÜĞ! !  F¨3¯:©:°c«?Ñ*=Ğ>×?ó+ "r   c                 óŞ   € V P                   R 8X  d@   ^ RIHp V! WP                  \        P
+                      R,          V P                  \        R7      # ^ RIHp V! WP                  \        R7      # )r%   )ÚRoceTransportÚROCE_DEV)Úchannelsr
+       )ÚTcpTransport)r
+       )	Ú	transportÚkv_transportr¥   Úroler1   r2   r§   r
+       r¨   )r   Ústorer¥   r¨   s   &&  r	   Úmake_transportr­   €   sK   € Ø‡~~˜Ôİ.Ù˜U§I¡I¬r¯z©z¸*Õ/EĞPT×P]ÑP]ÔcfÔgĞgİ)Ù˜Ÿy™y¬cÔ2Ğ2r   c                 óT  aaaaaaa€ \        V P                  4       EF  o\        WP                  4      p\        P
+                      ! VP                  VP                  ^,          V P                  4      o\        P                  ! 4       pVP                  RS 2\        P                  ! \        SP                  4       V P                  V P                   V P"                  VR7      4      4       SP%                  SSP&                  4      o\        P(                  ! 4       oRo/ oVVVVVVV3R lpV P                  R8X  d-   \        SP*                  4       Uu. uF  qˆV! V4      3NK  	  upM. p	\        P,                  ! 4       p
+    \/        W%SV	4      p\        P,                  ! 4       V
+    ,
+              R,          pVP                  RS 2\1        V4      4       V P                  R8X  do   \        P,                  ! 4       p\        P2                  ! SSS4       \        P,                  ! 4       V,
+              R,          oSP5                  S^ SP&                  ^ 4       \        P,                  ! 4       pSP7                  4        \        P,                  ! 4       V
+    ,
+              R,          p\        P8                  ! S4      p\;        R	S R
+    2\=        SP>                  SP@                  SP&                  SPB                  V P                  V P                   V P"                  TSTWü,
+              V P                  R8X  d   SMR,
+              VR \        PD                  ! SS4      R VR7      ,           4       \        PF                  ! VPI                  RS 24      4      p\;        R	S R
+    2\=        R/ VB ,           4       EK„  	  R# u upi )r~   úmeta/)rŸ   Úmoder§   r©   r    g        c                 ó$   <a € VV VVVVVV3R  lpV# )c                 óŒ  <€ \         P                  ! 4       p\        P                  ! S	S
+    SSP                  S,          SP
+                      S,          4       S\         P                  ! 4       V,
+              R ,          ,          oSP                  SSS
+    P                  ,          S
+    P                  S4       \         P                  ! 4       SS&   R# )rd   N)rf   rg   r   Ú
+    pack_layerÚ	key_cacheÚvalue_cacheÚpushÚlayer_bytes)ÚmoduleÚinputsÚoutputro   r\   r^   r„   Úpush_tr   r¡   rŸ   Útrs   &&& €€€€€€€€r	   ÚhookÚ-run_prefill.<locals>.layer_hook.<locals>.hook•   sŒ   ø€ ä×%Ò%Ó'Ü—’˜d D¨!¨U¯_©_¸QÕ-?À×ARÑARĞSTÕAUÔVØœD×-Ò-Ó/°!Õ3°tÕ;Õ;Ø—‘˜˜1˜t×/Ñ/Õ/°×1AÑ1AÀ1ÔEÜ ×-Ò-Ó/q“	r   r   )	r^   r½   r\   r„   r»   r   r¡   rŸ   r¼   s	   f €€€€€€€r	   Ú
+    layer_hookÚrun_prefill.<locals>.layer_hook”   s   ù€ ÷0ô 0ğ ˆKr   r$   rd   úfirst/r#   zrole=prefill req=r   rˆ   rŠ   )r€   r   r‚   Úbytes_per_tokenr°   r§   r©   rƒ   r„   Úpush_done_msÚexposed_transfer_msr‡   r‰   Úfirst_tokenúdone/Nr   )%re   r   rP   r€   r   r   r‘   rL   r   rf   ÚsetÚjsonÚdumpsrw   Úto_dictr°   r§   r©   Úopen_requestr”   r’   rW   rg   rb   Ústrr—   r¶   r   r›   r
+       r   rš   r   rÂ   rœ   Úloadsr3   )r   rB   rC   r¬   r¼   rO   r    r¿   r^   r]   Út_crj   rƒ   ro   Út_pushedrÃ   ÚcrcÚdoner\   r„   r»   r   r¡   rŸ   s   &&&&f             @@@@@@r	   Úrun_prefillrÒ   ˆ   sÈ  ş€ Ü4—=‘=×!ˆÜ˜×0Ñ0Ó1ˆÜ×"Ò" 5§<¡<°·±¸1µ¸t¿}¹}ÓMˆÜ—	’	“ˆØ	‰	E˜!˜+œtŸzšz¬$°D·L±L³NÈÏÉĞ]a×]jÑ]jØ9=¿¹Èuô+Vó  Wô 	Xà‰˜q $×"2Ñ"2Ó3ˆÜ—’Ó!ˆØˆØˆ÷	ó 	ğ EIÇIÁIĞQ\ÔD\¬U°4·;±;Ô-?Ó@Ñ-?¨‘Z “]Ó#Ñ-?Ò@ĞbdˆÜ×ÒÓ!ˆÜ ¨E°5Ó9ˆÜ×'Ò'Ó)¨CÕ/°4Õ7ˆ
+    Ø	‰	F˜1˜#,¤ E£
+    Ô+Ø9‰9˜ÔÜ×!Ò!Ó#ˆAÜMŠM˜$  eÔ,Ü×(Ò(Ó*¨QÕ.°$Õ6ˆGØG‰GAq˜$×*Ñ*¨AÔ.Ü×$Ò$Ó&ˆØ
+    ‰Œ
+    Ü×)Ò)Ó+¨cÕ1°TÕ9ˆÜmŠm˜DÓ!ˆÜĞ ˜s !Ğ$¤s¸¿¹ÈtÏzÉzĞdh×dtÑdtØ ×0Ñ0°t·y±yÈ4Ï=É=Ğdh×drÑdrØ!¨7ÀØ ,Õ 9ÈÏ	É	ĞU[ÔH[¹WĞadÕ eØ˜Cy´"×2BÒ2BÀ4ÈÓ2NÈsĞ1SĞbgô	(iõ iô 	jô
+     zŠz˜%Ÿ)™) e¨A¨3 KÓ0Ó1ˆÜĞ ˜s !Ğ$¤s¡{¨T¡{Õ2×3óS "ùò* As   ÅN%c           !      ó  € \        V P                  4       EF2  p\        P                  ! VP	                  R V 24      4      p\
+            P                  P                  VR,          4      pVP                  WWP                  4      pVR,          R8X  d   VP                  VR,          ,          MVR,          p	V P                  R8X  dU   ^ VR&   \        VP	                  RV 24      4      p
+    VP                  V	4       ^ VR&   \        P                  ! 4       pRVR	V	/pM7VP                  V	4      pVR
+    ,          p\        VP	                  RV 24      4      p
+    \        P                  ! 4       p\        W½4      p\
+            P                   ! V4      p\        P"                  ! 4       p\
+            P$                  ! W‡4      p\        P"                  ! 4       V,
+              R,          p\'        W!VW P(                  4      w  pp\+        R!RVP,                  RVP.                  RVP                  RVR,          RVR,          RVR,          RV P                  RW¶R,          ,
+              R,          RWæR,          ,
+              R,          RVRVR	,          RVR R\
+            P0                  ! W‡4      R /\3        V4      B p\5        RV R2\7        R!/ VB ,           4       \5        RV RV 24       \5        RV RVP9                  V4      : 24       VP;                  RV 2\        P<                  ! \+        \?        VR,          ^4      VR,          \?        V^4      R7      4      4       EK5  	  R # )"r¯   rŸ   r°   r$   r§   r*   rH   rÁ   Út_firstÚmessagesÚt_lastrd   r€   r   r‚   r©   ÚcontrolÚkv_ready_msr    r†   r…   Úwrites_receivedr‡   rˆ   r‰   rŠ   zrole=decode req=r   r‹   rŒ   rÆ   )Údecode_ttft_msÚdecode_kv_crc32Údecode_unpack_msNr   ) re   r   rÈ   rÍ   r3   r   ÚKVSpecÚ	from_dictrË   r”   rW   r×   r4   Ú	wait_datarf   Úmaxr›   rg   r˜   rp   r™   rw   rš   r   rœ   r|   r
+       r   r-   rÇ   rÉ   Úround)r   rB   rC   r¬   r¼   r   ÚmetarŸ   r¡   Úexpectedrj   Út_kvÚinforÔ   Út_readyrĞ   ro   r\   r…   r¢   rl   Úress   &&&&&                 r	   Ú
+    run_decoderè   µ   s  € Ü4—=‘=×!ˆÜzŠz˜%Ÿ)™) e¨A¨3 KÓ0Ó1ˆÜy‰y×"Ñ" 4¨¥<Ó0ˆØ‰˜q×"2Ñ"2Ó3ˆØ59¸&µ\À[Ô5P4—;‘;  jÕ!1Ö1ĞVZĞ[eÕVfˆØ<‰<˜9Ô$ØˆD‰GÜ˜Ÿ	™	 F¨1¨# ,Ó/Ó0ˆEØL‰L˜Ô"ØˆD‰GÜ—9’9“;ˆDØ˜t Z°Ğ:‰Dà—<‘< Ó)ˆDØ˜•>ˆDÜ˜Ÿ	™	 F¨1¨# ,Ó/Ó0ˆEÜ—)’)“+ˆÜdÓ$ˆÜmŠm˜DÓ!ˆÜ×ÒÓˆÜ—’ Ó+ˆÜ×&Ò&Ó(¨1Õ,°Õ4ˆ	Ü  ¨U°E×;NÑ;NÓO‰
+    ˆˆUÜñ \ §¡ğ \°t·z±zğ \ÈD×L\ÑL\ğ \ĞcgĞhnÕcoğ \Ø  Õ,ğ\Ø8<¸[Õ8Iğ\ØSW×S_ÑS_ğ\à $¨G¥}Õ 4¸Õ<ğ\ğ $¨7¥mÕ3°tÕ;ğ\ğ HQğ\ğ $(¨
+    Õ#3ğ	\ğ BEÀSÀ	ğ	\ô
+     #%×"2Ò"2°4Ó">¸sĞ!Cğ\ô
+     ITĞTYÓHZñ\ˆô 	Ğ˜q˜c Ğ#¤c¡j¨C¡jÕ0Ô1ÜĞ˜q˜c °°Ğ6Ô7ÜĞ˜q˜c ¨¯
+    ©
+    °3«Ñ':Ğ;Ô<Ø	‰	E˜!˜+œtŸzšz¬$¼eÀCÈ	ÅNĞTUÓ>VĞhkĞlvÕhwÜ@EÀiĞQRÓ@Sô+Uó  V÷ 	WóA "r   c                  óÜ  € \        4       p \        P                  ! V P                  4       \        P                  ! V P
+                      4       \        P                  ! 4       p\        4       w  r#VP                  p\        R V P                   R\        P                  P                  \        4       RVP                    RVP"                   RVP$                  VP&                  ,           R\        P                  ! 4       V,
+              R RV P                   R\(        P*                  ! V4      R	 24       V P                  R
+    8X  d   \-        WV4      # ^ RIHp V! \        P2                  P5                  RR4      \7        \        P2                  P5                  RR4      4      ^V P                  R8H  \9        RR7      RR7      p\;        W4      pV P                  R8X  d   \<        M\>        ! WW6V4       R# )zrole=z model=z layers=z
+     kv_heads=z
+     head_dim=z load_s=z.1fz	 threads=z weights_checksum=rŠ   r   )ÚTCPStoreÚMASTER_ADDRz	10.10.1.2ÚMASTER_PORTÚ29500r,   iX  )ÚsecondsT)Ú
+    world_sizeÚ	is_masterÚtimeoutÚwait_for_workersN) r7   r?   Úset_num_threadsÚthreadsÚmanual_seedÚseedrf   rg   rD   r‘   r
+       r«   r1   ÚpathÚbasenamer   Únum_hidden_layersÚnum_key_value_headsÚhidden_sizeÚnum_attention_headsr   Úweights_checksumr£   Útorch.distributedrê   r2   r3   r4   r   r­   rÒ   rè   )r   ro   rB   rC   Úcfgrê   r¬   r¼   s           r	   Úmainr   Ú   s  € Ü‹7€DÜ	×Ò˜$Ÿ,™,Ô'Ü	×Òd—i‘iÔ Ü×ÒÓ€AÜ“J€CØ
+    ,‰,€CÜˆ%—	‘	ˆ{˜'¤"§'¡'×"2Ñ"2´9Ó"=Ğ!>¸hÀs×G\ÑG\ĞF]ğ ^Ø×+Ñ+Ğ,¨J°s·±È#×JaÑJaÕ7aĞ6bğ cÜ×#Ò#Ó%¨Õ)¨#Ğ.¨i¸¿¹°~ğ FÜ×/Ò/°Ó6°sĞ;ğ	=ô >ğ ‡yyKÔÜ˜T¨Ó.Ğ.å*Ù”R—Z‘Z—^‘^ M°;Ó?ÄÄRÇZÁZÇ^Á^ĞTaĞcjÓEkÓAlØ !¨T¯Y©Y¸)Ñ-CÌYĞ_bÔMcØ&*ô,€Eô 
+    ˜Ó	$€BØ—I‘I Ô*…[´
+    Ğ:¸DÀuĞUWÖXr   Ú__main__)r   )$Ú__doc__r.   rÈ   r1   rx   Úsysrf   Údatetimer   r?   r÷   ÚinsertÚdirnameÚabspathÚ__file__Úkvlayoutr   r2   r3   r   r   r
+       r   r7   rD   rP   rb   rp   r|   r£   r­   rÒ   rè   r   Ú__name__Úno_gradr   r   r	   Ú<module>r     só   ğñó  Û Û 	Û Û 
+    Û İ ã à ‡‡2—7‘7—?‘? 2§7¡7§?¡?°8Ó#<Ó=Ô >Û àJ‰JN‰N˜;Ğ(>Ó?€	Øj‰jn‰n˜]Ğ,EÓF€òòcòò"òô+ò
+    òaò@ò23ò*4òZ"WòJYğ, ˆzÔØ	ŠÙŒ÷ 
+    ‰ñ ß	ˆús   Ã8DÄD	
+  app-__pycache__-kv_transport.cpython-314.pyc: |-
+    +
+        1áj&  ã                   óŠ   € R t ^ RIt^ RIt^ RIt^ RIt^ RIt^ RIt^ RIt^t	^t
+    ^tRtRtR tR t ! R R4      t ! R R	4      tR# )
+    aQ  KV-cache transports between the prefill worker (rank 0) and the decode worker (rank 1).
+
+    RoceTransport pushes the slab with RDMA WRITE over RC queue pairs (libibverbs, Soft-RoCE `rxe`), the
+    "WRITE (push)" example of Learning Byte 04:
+
+      * decode allocates and registers the destination slab and publishes (addr, rkey) in the TCP store,
+      * prefill pushes byte ranges of its own registered slab with RDMA WRITE WITH IMMEDIATE,
+      * each range is striped across `channels` RC QPs, and every QP has its own UDP source port, so the
+        fabric can ECMP-hash the channels onto different spines,
+      * the immediate (the layer index) tells decode that a range landed; decode counts completions.
+
+    TcpTransport sends the same slab over one TCP connection, for comparison.
+
+    Only bootstrap and metadata use the TCP store, as NCCL and NIXL bootstrap over sockets.
+    Ni s  gü©ñÒMb@?c           	     óâ   € V) V,          ) p. p\        V4       FR  pWV,          ,           p\        ^ \        W0V,           V,
+              4      4      pV'       g   K?  VP                  WVV34       KT  	  V# )zaSplit [offset, offset+nbytes) into `parts` contiguous ranges (last ones may be shorter or empty).)ÚrangeÚmaxÚminÚappend)ÚoffsetÚnbytesÚpartsÚsizeÚoutÚiÚloÚns   &&&     Úapp/kv_transport.pyÚstripesr       sf   € àˆW˜ÕĞ€DØ
+    €CÜ5\ˆØ˜$•hÕˆÜ”3t f_¨rÕ1Ó2Ó3ˆß‰1ØJ‰J˜˜qzÖ"ñ	 ğ
+     €Jó    c                 óæ  € R V  R\          2p\        \        P                  ! V R24      R R7       F  p\        VP	                  R^4      ^,          4      p \        V4      P                  4       P                  4       p\        V RV 24      P                  4       P                  4       pTP                  R4      '       g   K’  RT9   g   K›  Tu # 	  \        R	V  24      h  \         d     K½  i ; i)
+    z/sys/class/infiniband/z/ports/z/gids/*c                 óF   € \        V P                  R ^4      ^,          4      # )Ú/)ÚintÚrsplit)Úps   &r   Ú<lambda>Ú(roce_v2_ipv4_gid_index.<locals>.<lambda>.   s   € Ä#ÀaÇhÁhÈsĞTUÓFVĞWXÕFYÔBZr   )Úkeyr   z/gid_attrs/types/z0000:0000:0000:0000:0000:ffffÚv2zno RoCE v2 IPv4 GID on )ÚPORTÚsortedÚglobr   r   ÚopenÚreadÚstripÚOSErrorÚ
+    startswithÚRuntimeError)ÚdevÚbaseÚpathÚidxÚgidÚgtypes   &     r   Úroce_v2_ipv4_gid_indexr+   ,   sİ   € Ø# C 5¨´¨vĞ6€DÜ”t—y’y D 6¨Ğ!1Ó2Ñ8Z×[ˆÜ$—+‘+˜c 1Ó% aÕ(Ó)ˆğ	Üt“*—/‘/Ó#×)Ñ)Ó+ˆCÜ˜D˜6Ğ!2°3°%Ğ8Ó9×>Ñ>Ó@×FÑFÓHˆEğ >‰>Ğ9×:Ô:¸tÀu¾}ØŠJñ \ô Ğ0°°Ğ6Ó
+    7Ğ7øô	 ô 	Úğ	ús   ÁAC!Ã!C0Ã/C0c                   óˆ   a € ] tR t^:t o ^]^,          ],          ]3R ltR tR t	R t
+    R tRR ltRR ltRR	 ltR
+     tRtV tR# )ÚRoceTransportc                óú  € ^ RI Hp ^ RIHpHp	Hp
+     ^ RIHp ^ RIH	p ^ RI
+    Hp ^ RIHpHpHpHp WqW$V3w  V n        V n        V n        V n        V n        VR8X  d   ^ M^pV! VR7      V n        V! V P,                  4      V n        V! V P,                  R	4      V n        VP2                  VP4                  ,          V n        V P9                  ^@VP2                  4      V n        \=        V4      V n        V P,                  PA                  \B        V P>                  4      pV! R
+    R^^R7      p\E        V4       Uu. uF>  pV! V P.                  V! VPF                  V P0                  V P0                  VR7      4      NK@  	  upV n$        \E        V4       Uu. uF  p\J        PL                  ! R%4      NK  	  pp\O        \Q        V4      V PH                   Uu. uF  pVPR                  NK  	  upVR7      pVPU                  RV 2\V        PX                  ! V4      4       \V        PZ                  ! VP]                  R^V,
+               24      4      p\_        V PH                  4       EF3  w  ppV! \B        R7      pV P6                  Vn0        VPc                  V4       V
+    ! V! VR,          4      V P>                  ^@VR7      pV	! \B        ^VR7      Vn2        VPf                  Vn4        VR,          V,          Vn5        VR,          V,          Vn6        ^Vn7        ^Vn8        VPs                  V4       VV,          Vn:        ^Vn;        ^Vn<        ^Vn=        ^Vn>        VP                  V4       \E        R4       F"  pVP                  V Pƒ                  4       4       K$  	  EK6  	  \_        V PH                  4       UUu/ uF  w  ppVPR                  VbK  	  uppV nB        VPU                  RV 2R4       VP]                  R^V,
+               24       RV nC        RV nD        ^ V nE        ^ V nF        V! RV RV P>                   RV RVR,           RVR,           RVR,           RV R VR! R"V^,	           R#V^,           R$24       R# u upi u upi u upi u uppi )&é    N)ÚGIDÚAHAttrÚGlobalRoute)ÚCQ)ÚContext)ÚPD)ÚQPÚQPAttrÚQPCapÚ
+    QPInitAttrÚprefill)Únamei   i   i   )Úmax_send_wrÚmax_recv_wrÚmax_send_sgeÚmax_recv_sge)Úqp_typeÚscqÚrcqÚcap)r)   ÚqpnÚpsnzroce/)Úport_numr)   )ÚdgidÚ
+    sgid_indexÚ	hop_limitÚtraffic_class)rF   Ú	is_globalÚgrrD   rE   é   zroce/ready/Ú1z	roce dev=z gid_index=z gid=ú qpn=z
+     peer_gid=z
+     peer_qpn=z
+     channels=z
+     tclass=0xÚ02xz (DSCP z, ECN Ú)i   )GÚpyverbs.enumsÚenumsÚpyverbs.addrr0   r1   r2   Ú
+    pyverbs.cqr3   Úpyverbs.devicer4   Ú
+    pyverbs.pdr5   Ú
+    pyverbs.qpr6   r7   r8   r9   ÚeÚstoreÚroleÚchannelsÚlogÚctxÚpdÚcqÚIBV_ACCESS_LOCAL_WRITEÚIBV_ACCESS_REMOTE_WRITEÚaccessÚ_mrÚimm_sinkr+   Ú	gid_indexÚ	query_gidr   r   Ú
+    IBV_QPT_RCÚqpsÚrandomÚ	randrangeÚdictÚstrÚqp_numÚsetÚjsonÚdumpsÚloadsÚgetÚ	enumerateÚqp_access_flagsÚto_initÚah_attrÚIBV_MTU_4096Úpath_mtuÚdest_qp_numÚrq_psnÚmax_dest_rd_atomicÚmin_rnr_timerÚto_rtrÚsq_psnÚtimeoutÚ	retry_cntÚ	rnr_retryÚmax_rd_atomicÚto_rtsÚ	post_recvÚ_recv_wrÚ	qpn_to_chÚslab_mrÚremoteÚinflightÚwr_seq)ÚselfrZ   r[   r%   r\   Útclassr]   rY   r0   r1   r2   r3   r4   r5   r6   r7   r8   r9   Úrankr)   rC   Ú_rE   ÚqÚmeÚpeerr   ÚqpÚattrrL   s   &&&&&&&                       r   Ú__init__ÚRoceTransport.__init__;   s¶  € İ!ß9Ñ9İ!İ*İ!ß<Ó<àABÈ4Ğ[^ĞA^Ñ>ˆŒ”
+    ˜DœI t¤}°d´hØ˜IÔ%‰q¨1ˆÙ Ô$ˆŒÙT—X‘X“,ˆŒÙT—X‘X˜tÓ$ˆŒØ×.Ñ.°×1JÑ1JÕJˆŒØŸ™  Q×%=Ñ%=Ó>ˆŒÜ/°Ó4ˆŒØh‰h× Ñ ¤ t§~¡~Ó6ˆá °ÀAĞTUÔVˆä" 8œ_ó.Ù,˜ñ t—w‘w¡
+    °1·<±<ÀTÇWÁWĞRV×RYÑRYĞ_bÔ cÖdÙ,ñ.ˆŒä27¸´/ÓB±/¨QŒv×Ò Ö(±/ˆĞBÜ”c˜#“h°t·x²xÓ$@±x°! Q§X¤X±xÑ$@ÀcÔJˆØ	‰	E˜$˜.¤$§*¢*¨R£.Ô1ÜzŠz˜%Ÿ)™) e¨A°­H¨:Ğ$6Ó7Ó8ˆä˜tŸx™x×(‰EˆAˆrÙ¤4Ô(ˆDØ#'§;¡;ˆDÔ ØJ‰JtÔÙ¡# d¨5¥kÓ"2¸t¿~¹~ĞY[ĞkqÔrˆBÙ!¬4¸1ÀÔDˆDŒLØŸN™NˆDŒMØ# E{¨1~ˆDÔØ˜u+ a.ˆDŒKØ&'ˆDÔ#Ø!#ˆDÔØI‰IdŒOØ˜a&ˆDŒKØˆDŒLØˆDŒNØˆDŒNØ!"ˆDÔØI‰IdŒOÜ˜3–ZØ—‘˜TŸ]™]›_Ö-ô  ñ% )ô( 3<¸D¿H¹HÔ2EÔFÑ2E©$¨!¨Q˜!Ÿ(™( Aš+Ñ2EÒFˆŒØ	‰	K ˜vĞ&¨Ô,Ø	‰	K  D¥˜zĞ*Ô+ØˆŒØˆŒØˆŒØˆŒÙˆi˜u˜K¨¯©Ğ'7°u¸S¸EÀÀrÈ%ÅyÀkĞQ[Ğ\`ĞafÕ\gĞ[hğ iØ˜U} J¨x¨j¸
+    À6È#À,ÈgĞV\Ğ`aÕVaĞUbĞbhĞioĞrsÕisĞhtĞtuğwö 	xùòE.ùâBùÚ$@ùó0 Gs   Ä1AQ(Æ
+    Q-ÇQ2
+    Î#Q7c                ó4   € ^ RI Hp V! V P                  W4      # )r/   )ÚMR)Ú
+    pyverbs.mrr˜   r_   )rŒ   r   rc   r˜   s   &&& r   rd   ÚRoceTransport._mrs   s   € İ!Ù$—'‘'˜6Ó*Ğ*r   c                óˆ   € ^ RI HpHp V! ^V! V P                  P                  ^@V P                  P
+                      4      .R7      # )r/   )ÚSGEÚRecvWR)Únum_sgeÚsg)Ú
+    pyverbs.wrrœ   r   re   ÚbufÚlkey)rŒ   rœ   r   s   &  r   r†   ÚRoceTransport._recv_wrw   s2   € ß*Ù˜a¡S¨¯©×):Ñ):¸BÀÇÁ×@RÑ@RÓ%SĞ$TÔUĞUr   c                ó<  € V P                   e   V P                   P                  4        V P                  W P                  4      V n         RV n        V P
+                      R8X  d^   V P                  P                  RV 2\        P                  ! V P                   P                  V P                   P                  .4      4       \        P                  V,          P                  V P                   P                  4      p\        P                   ! V\        P"                  R7      # )zMAllocate and register the slab. Decode publishes (addr, rkey) for the sender.NÚdecodeúmr/©Údtype)rˆ   Úcloserd   rc   r‰   r[   rZ   ro   rp   rq   r¡   ÚrkeyÚctypesÚc_ubyteÚfrom_addressÚnpÚ
+    frombufferÚuint8)rŒ   Úridr   Úraws   &&& r   Úopen_requestÚRoceTransport.open_request{   sµ   € à<‰<Ò#ØL‰L×ÑÔ Ø—x‘x ¯©Ó4ˆŒØˆŒØ9‰9˜Ô ØJ‰JN‰N˜S  ˜;¬¯
+    ª
+    °D·L±L×4DÑ4DÀdÇlÁl×FWÑFWĞ3XÓ(YÔZÜ~‰~ Õ&×4Ñ4°T·\±\×5EÑ5EÓFˆÜ}Š}˜S¬¯©Ô1Ğ1r   c                óÌ  € ^ RI HpHp V P                  f8   \        P
+                      ! V P                  P                  RV 24      4      V n        V P                  w  rx\        W#V P                  4       Fî  w  ršpV ;P                  ^,          un
+            V! V P                  V P                  P                  ^V! V P                  P                  V
+    ,           W°P                  P                  4      .V P                  P                   R7      pWLn        VP%                  W‡V
+    ,           4       V P&                  V	,          P)                  V4       V ;P*                  ^,          un        Kğ  	  R# )z]RDMA WRITE WITH IMM of slab[offset:offset+nbytes], striped over the channels. imm_data = tag.)rœ   ÚSendWRNr¦   )Úwr_idÚopcoder   rŸ   Ú
+    send_flags)r    rœ   r¶   r‰   rp   rr   rZ   rs   r   r\   r‹   rY   ÚIBV_WR_RDMA_WRITE_WITH_IMMrˆ   r¡   r¢   ÚIBV_SEND_SIGNALEDÚimm_dataÚset_wr_rdmari   Ú	post_sendrŠ   )rŒ   r±   r   r   Útagrœ   r¶   Úraddrrª   Úchr   r   Úwrs   &&&&&        r   ÚpushÚRoceTransport.push†   sò   € ç*Ø;‰;ÒÜŸ*š* T§Z¡Z§^¡^°c¸#¸°KÓ%@ÓAˆDŒKØ—k‘k‰ˆÜ  °·±Ö?‰IˆBAØKŠK˜1ÕKÙ˜dŸk™k°$·&±&×2SÑ2SĞ]^Ù §¡× 0Ñ 0°2Õ 5°q¿,¹,×:KÑ:KÓLĞMØ#'§6¡6×#;Ñ#;ô=ˆBğ ŒKØN‰N˜4¨¥Ô,ØH‰HRL×"Ñ" 2Ô&ØMŠM˜QÕMó @r   Nc           	     óª  € V P                   P                  ^@R7      w  r#VRV  EF*  pVP                  V P                  P                  8w  d3   \        RVP                   RVP                   RVP                   24      hVP                  V P                  P                  8X  d   V ;P                  ^,          un	        K›  VP                  V P                  P                  8X  g   KÂ  V P                  V P                  VP                  ,          ,          P                  V P                  4       4       V'       g   EK  V! VP                  4       EK-  	  V# )é@   )Únum_entriesNzWC error status=z opcode=rO   )r`   ÚpollÚstatusrY   ÚIBV_WC_SUCCESSr$   r¸   rn   ÚIBV_WC_RDMA_WRITErŠ   ÚIBV_WC_RECV_RDMA_WITH_IMMri   r‡   r…   r†   r¼   )rŒ   Úon_recvr   ÚwcsÚwcs   &&   r   Ú_pollÚRoceTransport._poll–   sê   € Ø—‘—‘¨"Ó-‰ˆØbq”'ˆBØy‰y˜DŸF™F×1Ñ1Ô1Ü"Ğ%5°b·i±i°[ÀÈÏÉÈĞSXĞY[×YbÑYbĞXcĞ#dÓeĞeØy‰y˜DŸF™F×4Ñ4Ô4Ø—’ Õ"—Ø—‘˜dŸf™f×>Ñ>Ö>Ø—‘˜Ÿ™¨¯	©	Õ2Õ3×=Ñ=¸d¿m¹m»oÔNß’7Ù˜BŸK™K×(ñ ğ ˆr   c                ó.  € \         P                  ! 4       V,           pV P                  '       dg   V P                  4       '       d   K*  \         P                  ! \
+            4       \         P                  ! 4       V8”  g   K`  \        V P                   R24      hR# )zISender: wait until every WRITE is acknowledged by the responder (RC ACK).z WRITEs unacknowledgedN)ÚtimeÚ	monotonicrŠ   rĞ   ÚsleepÚ
+    POLL_SLEEPÚTimeoutError)rŒ   r€   Údeadlines   && r   ÚflushÚRoceTransport.flush£   s^   € ä—>’>Ó# gÕ-ˆØmmˆmØ—:‘:—<”<Ü—
+    ’
+    œ:Ô&Ü—>’>Ó# hÖ.Ü&¨$¯-©-¨Ğ8NĞ'OÓPĞPñ	 r   c           
+         óz  aaa€ ^ R/ uoooVVV3R lp\         P                  ! 4       V,           pSV8  db   V P                  V4      '       d   K   \         P                  ! \        4       \         P                  ! 4       V8”  g   KV  \        RS RV R24      hRSR\         P                   ! 4       RSR	\        S4      /# )
+    z[Receiver: wait for `expected` WRITE-with-immediate completions. Returns arrival timestamps.Nc                 ó   <€ S^,          oS;'       g    \         P                   ! 4       oSP                  V ^ 4      ^,           SV &   R# )é   N)rÓ   rs   )r¿   ÚfirstÚgotÚper_tags   &€€€r   rÍ   Ú(RoceTransport.wait_data.<locals>.on_recv°   s8   ø€ à1HˆCØ×(Ğ(œTŸYšY›[ˆEØ"Ÿ;™; s¨AÓ.°Õ2ˆGC‹Lr   z	received r   z completionsÚt_firstÚt_lastÚmessagesÚtags)rÓ   rÔ   rĞ   rÕ   rÖ   r×   Úlen)rŒ   Úexpectedr€   rÍ   rØ   rŞ   rß   rà   s   &&&  @@@r   Ú	wait_dataÚRoceTransport.wait_data¬   sš   ú€ à  rĞˆˆUG÷	3ô —>’>Ó# gÕ-ˆØHŒnØ—:‘:˜g×&Ô&Ü—
+    ’
+    œ:Ô&Ü—>’>Ó# hÖ.Ü&¨°3°%°q¸¸
+    À,Ğ'OÓPĞPØ˜5 (¬D¯IªI«K¸ÀSÈ&ÔRUĞV]ÓR^Ğ_Ğ_r   c                ó   € R # ©N© )rŒ   s   &r   Úclose_requestÚRoceTransport.close_request¾   ó   € Ùr   )rc   r\   r`   r^   rY   rf   re   rŠ   r]   r_   r‡   ri   r‰   r[   rˆ   rZ   r‹   rë   ©g     Àr@)Ú__name__Ú
+    __module__Ú__qualname__Ú__firstlineno__Ú	ROCE_DSCPÚECT0Úprintr•   rd   r†   r³   rÃ   rĞ   rÙ   rè   rí   Ú__static_attributes__Ú__classdictcell__©Ú__classdict__s   @r   r-   r-   :   sM   ø‡ € Ø23¸YÈ!½^ÈtÕ<SĞY^ô 6xòp+òVò	2òô ôQô`÷$ğ r   r-   c                   óP   a € ] tR t^Ât o RR]3R ltR tR tR	R ltR	R lt	Rt
+    V tR# )
+    ÚTcpTransportz	10.10.2.2c           	     ó  € WVuV n         V n        V n        R V n        VR8X  dÄ   \        P                  ! 4       pVP                  \        P                  \        P                  ^4       VP                  V\        34       VP                  ^4       VP                  RR4       VP                  4       w  V n        pVP                  4        V! RV^ ,           RV^,           24       MfVP                  R4       \        P                   ! V\        34      V n        V! RV R\         RV P                  P#                  4       ^,           24       V P                  P                  \        P$                  \        P&                  ^4       R # )Nr¥   z	tcp/readyrN   ztcp data connection from Ú:ztcp data connection to z from port )rZ   r[   r]   ÚslabÚsocketÚ
+    setsockoptÚ
+    SOL_SOCKETÚSO_REUSEADDRÚbindÚTCP_DATA_PORTÚlistenro   ÚacceptÚsockr©   rs   Úcreate_connectionÚgetsocknameÚIPPROTO_TCPÚTCP_NODELAY)rŒ   rZ   r[   Ú	bind_addrÚ	peer_addrr]   Úsrvr’   s   &&&&&&  r   r•   ÚTcpTransport.__init__Ã   s&  € Ø*/°sĞ'ˆŒ
+    D”I˜tœxØˆŒ	Ø8ÔÜ—-’-“/ˆCØN‰Nœ6×,Ñ,¬f×.AÑ.AÀ1ÔEØH‰Hi¤Ğ/Ô0ØJ‰JqŒMØI‰Ik 3Ô'Ø!Ÿj™j›l‰OˆDŒItØI‰IŒKÙĞ+¨D°­G¨9°A°d¸1µg°YĞ?Õ@àI‰IkÔ"Ü×0Ò0°)¼]Ğ1KÓLˆDŒIÙĞ)¨)¨°A´m°_ÀKĞPT×PYÑPY×PeÑPeÓPgĞhiÕPjĞOkĞlÔmØ	‰	×ÑœV×/Ñ/´×1CÑ1CÀQÖGr   c                óp   € \         P                  ! V\         P                  R 7      V n        V P                  # )r§   )r®   Úzerosr°   r   )rŒ   r±   r   s   &&&r   r³   ÚTcpTransport.open_requestÕ   s"   € Ü—H’H˜V¬2¯8©8Ô4ˆŒ	Øy‰yĞr   c                ót   € V P                   P                  \        V P                  4      W"V,            4       R # rë   )r	  ÚsendallÚ
+    memoryviewr   )rŒ   r±   r   r   r¿   s   &&&&&r   rÃ   ÚTcpTransport.pushÙ   s&   € Ø	‰	×Ñœ* T§Y¡YÓ/°ÀµĞGÖHr   c                ó   € R # rë   rì   )rŒ   r€   s   &&r   rÙ   ÚTcpTransport.flushÜ   rï   r   c                óœ  € \        V P                  4      ^ RrTpV\        V P                  4      8  d   V P                  P	                  W4R \        \        V P                  4      V,
+              R4      4      pV'       g   \        R4      hT;'       g    \        P                  ! 4       pWF,          pK˜  RVR\        P                  ! 4       R^R^/# )r/   Nzpeer closed during KV transferrâ   rã   rä   rå   i   )r  r   ræ   r	  Ú	recv_intor   ÚConnectionErrorrÓ   )rŒ   Úexpected_unusedr€   Úmvr   rŞ   rß   s   &&&    r   rè   ÚTcpTransport.wait_dataß   s›   € Ü! $§)¡)Ó,¨a°ˆuˆØ”#d—i‘i“.Ô Ø—)‘)×%Ñ% b¨ f¬c´#°d·i±i³.À1Õ2DÀgÓ.NÓOˆCßÜ%Ğ&FÓGĞGØ×(Ğ(œTŸYšY›[ˆEØHŠAØ˜5 (¬D¯IªI«K¸ÀQÈĞPQĞRĞRr   )r]   r[   r   r	  rZ   Nrğ   )rñ   rò   ró   rô   r÷   r•   r³   rÃ   rÙ   rè   rø   rù   rú   s   @r   rı   rı   Â   s/   ø‡ € Ø.9À[ĞV[ô Hò$òIô÷Sò Sr   rı   )Ú__doc__r«   r   rp   rj   r  rÓ   Únumpyr®   rõ   rö   r   r  rÖ   r   r+   r-   rı   rì   r   r   Ú<module>r#     s]   ğñó Û Û Û Û Û ã à€	Ø€Ø€Ø€Ø€
+    ò	ò8÷Eñ E÷P%Só %Sr   
+  app-__pycache__-kvlayout.cpython-314.pyc: |-
+    +
+        !ájD  ã                   óÈ   € R t ^ RIt^ RIHtHt ^ RIt^ RIt^ RIH	t	 R]P                  ^3R]P                  ^3/t] ! R R4      4       tR tR	 tR
+     tR tR tR tR tR tR# )a¿  KV-cache slab layout shared by the prefill and decode workers.
+
+    The Hugging Face cache for layer L holds K and V tensors of shape [1, kv_heads, tokens, head_dim].
+    The slab stores them layer after layer, K then V, each C-contiguous:
+
+        slab = [layer 0: K | V][layer 1: K | V] ... [layer N-1: K | V]
+
+    so one layer is one contiguous byte range (what a layer-wise RDMA WRITE pushes) and the whole slab is one
+    contiguous range (what a bulk RDMA WRITE pushes). The size is analytic:
+
+        bytes = 2 * layers * kv_heads * head_dim * tokens * dtype_bytes
+
+    The slab memory itself is allocated by the transport (an RDMA-registered buffer, or a plain buffer for TCP);
+    this module only gives tensor views over it.
+    N)ÚasdictÚ	dataclass)ÚDynamicCacheÚfp32Úfp16c                   ó’   a € ] tR t^t o ]R 4       t]R 4       t]R 4       t]R 4       t]R 4       t	R t
+    ]R 4       tV 3R ltR	tV tR
+    # )ÚKVSpecc                ó>   € \         V P                  ,          ^ ,          # )é    ©ÚDTYPESÚdtype©Úselfs   &Úapp/kvlayout.pyÚtorch_dtypeÚKVSpec.torch_dtype"   ó   € äd—j‘jÕ! !Õ$Ğ$ó    c                ó>   € \         V P                  ,          ^,          # )é   r   r   s   &r   Ú
+    elem_bytesÚKVSpec.elem_bytes&   r   r   c                ó   € ^V P                   ,          V P                  ,          V P                  ,          V P                  ,          # ©é   )Úkv_headsÚtokensÚhead_dimr   r   s   &r   Úlayer_bytesÚKVSpec.layer_bytes*   s,   € à4—=‘=Õ  4§;¡;Õ.°·±Õ>ÀÇÁÕPĞPr   c                ó<   € V P                   V P                  ,          # ©N)Úlayersr   r   s   &r   Útotal_bytesÚKVSpec.total_bytes.   s   € à{‰{˜T×-Ñ-Õ-Ğ-r   c                ó   € ^V P                   ,          V P                  ,          V P                  ,          V P                  ,          # r   )r#   r   r   r   r   s   &r   Úbytes_per_tokenÚKVSpec.bytes_per_token2   s+   € à4—;‘; §¡Õ.°·±Õ>ÀÇÁÕPĞPr   c                ó   € \        V 4      # r"   )r   r   s   &r   Úto_dictÚKVSpec.to_dict6   s   € Üd‹|Ğr   c                ó   € \        R/ V B # )N© )r   )Úds   &r   Ú	from_dictÚKVSpec.from_dict9   s   € ä‰{˜‰{Ğr   c                óV   <€ V ^8„  d   Qh/ S[ ;R&   S[ ;R&   S[ ;R&   S[ ;R&   S[;R&   # )r   r#   r   r   r   r   )ÚintÚstr)ÚformatÚ__classdict__s   "€r   Ú__annotate__ÚKVSpec.__annotate__   s?   ø‡ ‚ áKñ ñ Mñ ñ Mñ	 ñ
+     Kñ ñ Jò r   r-   N)Ú__name__Ú
+    __module__Ú__qualname__Ú__firstlineno__Úpropertyr   r   r   r$   r'   r*   Ústaticmethodr/   Ú__annotate_func__Ú__static_attributes__Ú__classdictcell__)r5   s   @r   r   r      s   ø‡ € ğ ñ%ó ğ%ğ ñ%ó ğ%ğ ñQó ğQğ ñ.ó ğ.ğ ñQó ğQòğ ñó ğ÷A ƒ r   r   c                 óª   € \        V R R4      ;'       g    V P                  V P                  ,          p\        V P                  V P
+                      W1V4      # )r   N)ÚgetattrÚhidden_sizeÚnum_attention_headsr   Únum_hidden_layersÚnum_key_value_heads)Úcfgr   r   r   s   &&& r   Úspec_from_configrH   >   sE   € Üs˜J¨Ó-×[Ğ[°·±ÀC×D[ÑD[Õ1[€HÜ#×'Ñ'¨×)@Ñ)@À(ĞTYÓZĞZr   c                ó  € W!P                   ,          p\        P                  ! WW1P                   ,            4      pVP                  VP                  4      P                  ^VP                  VP                  VP                  4      # )z]Tensor [2, kv_heads, tokens, head_dim] (index 0 = K, 1 = V) over the slab bytes of one layer.)	r   ÚtorchÚ
+    from_numpyÚviewr   Úreshaper   r   r   )ÚslabÚspecÚlayerÚoffÚraws   &&&  r   Ú
+    layer_viewrS   C   s`   € à
+    ×"Ñ"Õ
+    "€CÜ
+    ×
+    Ò
+    ˜4 C×*:Ñ*:Õ$:Ğ;Ó
+    <€CØ8‰8D×$Ñ$Ó%×-Ñ-¨a°·±ÀÇÁÈTÏ]É]Ó[Ğ[r   c                óš   € \        WV4      pV^ ,          P                  V^ ,          4       V^,          P                  V^ ,          4       R# )zdCopy one layer's K and V ([1, kv_heads, tokens, head_dim]) into the slab, casting to the wire dtype.N)rS   Úcopy_)rN   rO   rP   ÚkÚvÚts   &&&&& r   Ú
+    pack_layerrY   J   s6   € ä4˜uÓ%€AØ€a…D‡JJˆqtÔØ€a…D‡JJˆqtÖr   c           	      óœ   € \        VP                  4       F2  p\        WW2P                  V,          VP                  V,          4       K4  	  R # r"   )Úranger#   rY   Ú	key_cacheÚvalue_cache)rN   rO   ÚcacheÚis   &&& r   Ú
+    pack_cacher`   Q   s5   € Ü4—;‘;ÖˆÜ4˜q§/¡/°!Õ"4°e×6GÑ6GÈÕ6JÖKó  r   c                ó„  € . p\        VP                  4       F‡  p\        WV4      P                  \        P
+                      4      pVP                  V^ ,          P                  ^ 4      P                  4       V^,          P                  ^ 4      P                  4       34       K‰  	  \        P                  ! \        V4      4      # )z=Rebuild a DynamicCache (fp32, the model dtype) from the slab.)r[   r#   rS   ÚtorJ   Úfloat32ÚappendÚ	unsqueezeÚ
+    contiguousr   Úfrom_legacy_cacheÚtuple)rN   rO   r#   r_   rX   s   &&   r   Úunpack_cacheri   V   s‰   € à€FÜ4—;‘;ÖˆÜt 1Ó%×(Ñ(¬¯©Ó7ˆØ‰q˜•t—~‘~ aÓ(×3Ñ3Ó5°q¸µt·~±~ÀaÓ7H×7SÑ7SÓ7UĞVÖWñ  ô ×)Ò)¬%°«-Ó8Ğ8r   c                óN   € \         P                  ! \        V 4      4      R,          # )z-Exact byte integrity of the transferred slab.l   ÿÿ )ÚzlibÚcrc32Ú
+    memoryview)rN   s   &r   Ú
+    slab_crc32rn   _   s   € ä:Š:”j Ó&Ó'¨*Õ4Ğ4r   c                óÄ   € \        \        P                  ! V RVP                   4      P	                  VP
+                      4      P                  4       P                  4       4      # )zVSum of all KV values in float64, the analogue of the training lab's gradient checksum.N)ÚfloatrJ   rK   r$   rL   r   ÚdoubleÚsum)rN   rO   s   &&r   Úslab_checksumrs   d   sI   € ä”×!Ò! $Ğ'8¨×(8Ñ(8Ğ"9Ó:×?Ñ?À×@PÑ@PÓQ×XÑXÓZ×^Ñ^Ó`ÓaĞar   c                 óT   € \        \        R  V P                  4        4       4      4      # )c              3   ó\   "  € T F"  qP                  4       P                  4       x € K$  	  R # 5ir"   )rq   rr   )Ú.0Úps   & r   Ú	<genexpr>Ú#weights_checksum.<locals>.<genexpr>j   s    é € ĞBÑ/A¨!—X‘X“Z—^‘^×%Ğ%Ó/Aùs   ‚*,)rp   rr   Ú
+    parameters)Úmodels   &r   Úweights_checksumr|   i   s!   € Ü”ÑB¨u×/?Ñ/?Ô/AÓBÓBÓCĞCr   )Ú__doc__rk   Údataclassesr   r   ÚnumpyÚnprJ   Útransformersr   rc   Úfloat16r   r   rH   rS   rY   r`   ri   rn   rs   r|   r-   r   r   Ú<module>rƒ      s‚   ğñó ß )ã Û İ %à
+    5—=‘= !Ğ$ f¨u¯}©}¸aĞ.@Ğ	A€ğ ÷ ğ  ó ğ òF[ò
+    \òòLò
+    9ò5ò
+    bô
+    Dr   
+  app-infer.py: |-
+    """Disaggregated LLM inference: prefill on one worker, decode on the other, KV cache over RoCEv2.
+
+      --role prefill     process the prompt, build the real KV cache, push it to the decode worker (rank 0, hosts the store)
+      --role decode      receive the KV cache into registered memory, rebuild it, generate tokens (rank 1)
+      --role colocated   prefill and decode in one process with no network: the reference run
+
+    Greedy decoding, fixed seed and thread count, so the colocated and disaggregated runs must produce identical
+    tokens and an identical KV byte checksum. With --kv-dtype fp16 the colocated run quantizes the cache at the same
+    point where the disaggregated run does, so the comparison stays exact.
+
+    Timeline (wall clock, both workers share the host clock):
+      t_req       the request enters prefill
+      prefill_ms  forward pass over the prompt (includes layer-wise pushes when --mode layerwise)
+      kv_ready    the last KV byte is in decode memory (immediate of the last WRITE received)
+      ttft_ms     max(kv_ready, first token published) - t_req: decode emits token 0 once it holds the whole cache
+    """
+    import argparse
+    import json
+    import os
+    import statistics
+    import sys
+    import time
+    from datetime import timedelta
+
+    import torch
+
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import kvlayout as kv  # noqa: E402
+
+    MODEL_DIR = os.environ.get("MODEL_DIR", "/models/SmolLM2-135M")
+    PROMPT_FILE = os.environ.get("PROMPT_FILE", "/lab/prompts/source.txt")
+
+
+    def log(msg):
+        print(msg, flush=True)
+
+
+    def kvs(**kw):
+        return " ".join(f"{k}={v:.2f}" if isinstance(v, float) else f"{k}={v}" for k, v in kw.items())
+
+
+    def parse():
+        p = argparse.ArgumentParser()
+        p.add_argument("--role", choices=["prefill", "decode", "colocated"], default=os.environ.get("ROLE", "colocated"))
+        p.add_argument("--prompt-tokens", type=int, default=128)
+        p.add_argument("--max-new-tokens", type=int, default=16)
+        p.add_argument("--kv-dtype", choices=["fp32", "fp16"], default="fp32")
+        p.add_argument("--mode", choices=["bulk", "layerwise"], default="bulk")
+        p.add_argument("--channels", type=int, default=2)
+        p.add_argument("--transport", choices=["roce", "tcp"], default="roce")
+        p.add_argument("--requests", type=int, default=1)
+        p.add_argument("--threads", type=int, default=int(os.environ.get("TORCH_THREADS", "4")))
+        p.add_argument("--control", choices=["none", "zero-kv"], default="none",
+                       help="decode only: ignore the received KV and use zeros, to show the KV carries the state")
+        p.add_argument("--seed", type=int, default=0)
+        return p.parse_args()
+
+
+    def load():
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        tok = AutoTokenizer.from_pretrained(MODEL_DIR)
+        model = AutoModelForCausalLM.from_pretrained(MODEL_DIR, torch_dtype=torch.float32).eval()
+        return tok, model
+
+
+    def prompt_ids(tok, n):
+        ids = tok(open(PROMPT_FILE).read(), return_tensors="pt").input_ids
+        if ids.shape[1] < n:
+            raise SystemExit(f"prompt source has only {ids.shape[1]} tokens, need {n}")
+        return ids[:, :n]
+
+
+    def prefill_forward(model, ids, cache, hooks=()):
+        handles = [model.model.layers[i].register_forward_hook(h) for i, h in hooks]
+        try:
+            out = model(input_ids=ids, past_key_values=cache, use_cache=True, num_logits_to_keep=1)
+        finally:
+            for h in handles:
+                h.remove()
+        return int(out.logits[0, -1].argmax())
+
+
+    def decode_loop(model, tok, cache, first, n_new):
+        """Greedy decode. Token 0 is `first` (already known); returns ids and per-token step times in ms."""
+        ids, steps = [first], []
+        cur = first
+        for _ in range(n_new - 1):
+            t = time.perf_counter()
+            out = model(input_ids=torch.tensor([[cur]]), past_key_values=cache, use_cache=True)
+            cur = int(out.logits[0, -1].argmax())
+            steps.append((time.perf_counter() - t) * 1000)
+            ids.append(cur)
+        return ids, steps
+
+
+    def itl_summary(steps):
+        if not steps:
+            return {}
+        s = sorted(steps)
+        return dict(itl_mean_ms=statistics.mean(steps), itl_p50_ms=s[len(s) // 2], itl_max_ms=s[-1])
+
+
+    def run_colocated(args, tok, model):
+        for r in range(args.requests):
+            ids = prompt_ids(tok, args.prompt_tokens)
+            spec = kv.spec_from_config(model.config, ids.shape[1], args.kv_dtype)
+            t_req = time.perf_counter()
+            cache = kv.DynamicCache()
+            first = prefill_forward(model, ids, cache)
+            prefill_ms = (time.perf_counter() - t_req) * 1000
+            # Same pack/unpack path as the handoff, so fp16 quantization is applied identically.
+            slab = torch.zeros(spec.total_bytes, dtype=torch.uint8).numpy()
+            t = time.perf_counter()
+            kv.pack_cache(slab, spec, cache)
+            pack_ms = (time.perf_counter() - t) * 1000
+            t = time.perf_counter()
+            cache = kv.unpack_cache(slab, spec)
+            unpack_ms = (time.perf_counter() - t) * 1000
+            gen, steps = decode_loop(model, tok, cache, first, args.max_new_tokens)
+            log(f"role=colocated req={r} " + kvs(prompt_tokens=spec.tokens, kv_dtype=spec.dtype, kv_bytes=spec.total_bytes,
+                prefill_ms=prefill_ms, pack_ms=pack_ms, unpack_ms=unpack_ms, ttft_ms=prefill_ms,
+                kv_crc32=f"{kv.slab_crc32(slab):08x}", kv_checksum=f"{kv.slab_checksum(slab, spec):.6f}",
+                **itl_summary(steps)))
+            log(f"role=colocated req={r} generated_ids={gen}")
+            log(f"role=colocated req={r} text={tok.decode(gen)!r}")
+
+
+    def make_transport(args, store):
+        if args.transport == "roce":
+            from kv_transport import RoceTransport
+            return RoceTransport(store, args.role, os.environ["ROCE_DEV"], channels=args.channels, log=log)
+        from kv_transport import TcpTransport
+        return TcpTransport(store, args.role, log=log)
+
+
+    def run_prefill(args, tok, model, store, tr):
+        for r in range(args.requests):
+            ids = prompt_ids(tok, args.prompt_tokens)
+            spec = kv.spec_from_config(model.config, ids.shape[1], args.kv_dtype)
+            t_req = time.time()
+            store.set(f"meta/{r}", json.dumps(dict(spec=spec.to_dict(), mode=args.mode, channels=args.channels,
+                                                   transport=args.transport, t_req=t_req)))
+            slab = tr.open_request(r, spec.total_bytes)
+            cache = kv.DynamicCache()
+            pack_ms = 0.0
+            push_t = {}
+
+            def layer_hook(i):
+                def hook(module, inputs, output):
+                    nonlocal pack_ms
+                    t = time.perf_counter()
+                    kv.pack_layer(slab, spec, i, cache.key_cache[i], cache.value_cache[i])
+                    pack_ms += (time.perf_counter() - t) * 1000
+                    tr.push(r, i * spec.layer_bytes, spec.layer_bytes, i)
+                    push_t[i] = time.perf_counter()
+                return hook
+
+            hooks = [(i, layer_hook(i)) for i in range(spec.layers)] if args.mode == "layerwise" else []
+            t_c = time.perf_counter()
+            first = prefill_forward(model, ids, cache, hooks)
+            prefill_ms = (time.perf_counter() - t_c) * 1000
+            store.set(f"first/{r}", str(first))
+            if args.mode == "bulk":
+                t = time.perf_counter()
+                kv.pack_cache(slab, spec, cache)
+                pack_ms = (time.perf_counter() - t) * 1000
+                tr.push(r, 0, spec.total_bytes, 0)
+            t_pushed = time.perf_counter()
+            tr.flush()
+            push_done_ms = (time.perf_counter() - t_c) * 1000
+            crc = kv.slab_crc32(slab)
+            log(f"role=prefill req={r} " + kvs(prompt_tokens=spec.tokens, kv_dtype=spec.dtype, kv_bytes=spec.total_bytes,
+                bytes_per_token=spec.bytes_per_token, mode=args.mode, channels=args.channels, transport=args.transport,
+                prefill_ms=prefill_ms, pack_ms=pack_ms, push_done_ms=push_done_ms,
+                exposed_transfer_ms=push_done_ms - prefill_ms - (pack_ms if args.mode == "bulk" else 0.0),
+                kv_crc32=f"{crc:08x}", kv_checksum=f"{kv.slab_checksum(slab, spec):.6f}", first_token=first))
+            done = json.loads(store.get(f"done/{r}"))
+            log(f"role=prefill req={r} " + kvs(**done))
+
+
+    def run_decode(args, tok, model, store, tr):
+        for r in range(args.requests):
+            meta = json.loads(store.get(f"meta/{r}"))
+            spec = kv.KVSpec.from_dict(meta["spec"])
+            slab = tr.open_request(r, spec.total_bytes)
+            expected = spec.layers * meta["channels"] if meta["mode"] == "layerwise" else meta["channels"]
+            if args.control == "zero-kv":
+                slab[:] = 0
+                first = int(store.get(f"first/{r}"))
+                tr.wait_data(expected)  # still drain the transfer so the sender completes, then discard it
+                slab[:] = 0
+                t_kv = time.time()
+                info = {"t_first": t_kv, "messages": expected}
+            else:
+                info = tr.wait_data(expected)
+                t_kv = info["t_last"]
+                first = int(store.get(f"first/{r}"))
+            t_first = time.time()
+            t_ready = max(t_kv, t_first)
+            crc = kv.slab_crc32(slab)
+            t = time.perf_counter()
+            cache = kv.unpack_cache(slab, spec)
+            unpack_ms = (time.perf_counter() - t) * 1000
+            gen, steps = decode_loop(model, tok, cache, first, args.max_new_tokens)
+            res = dict(prompt_tokens=spec.tokens, kv_dtype=spec.dtype, kv_bytes=spec.total_bytes, mode=meta["mode"],
+                       channels=meta["channels"], transport=meta["transport"], control=args.control,
+                       kv_ready_ms=(t_kv - meta["t_req"]) * 1000,
+                       ttft_ms=(t_ready - meta["t_req"]) * 1000, unpack_ms=unpack_ms,
+                       writes_received=info["messages"], kv_crc32=f"{crc:08x}",
+                       kv_checksum=f"{kv.slab_checksum(slab, spec):.6f}", **itl_summary(steps))
+            log(f"role=decode req={r} " + kvs(**res))
+            log(f"role=decode req={r} generated_ids={gen}")
+            log(f"role=decode req={r} text={tok.decode(gen)!r}")
+            store.set(f"done/{r}", json.dumps(dict(decode_ttft_ms=round(res["ttft_ms"], 2), decode_kv_crc32=res["kv_crc32"],
+                                                   decode_unpack_ms=round(unpack_ms, 2))))
+
+
+    def main():
+        args = parse()
+        torch.set_num_threads(args.threads)
+        torch.manual_seed(args.seed)
+        t = time.perf_counter()
+        tok, model = load()
+        cfg = model.config
+        log(f"role={args.role} model={os.path.basename(MODEL_DIR)} layers={cfg.num_hidden_layers} "
+            f"kv_heads={cfg.num_key_value_heads} head_dim={cfg.hidden_size // cfg.num_attention_heads} "
+            f"load_s={time.perf_counter() - t:.1f} threads={args.threads} "
+            f"weights_checksum={kv.weights_checksum(model):.6f}")
+        if args.role == "colocated":
+            return run_colocated(args, tok, model)
+
+        from torch.distributed import TCPStore
+        store = TCPStore(os.environ.get("MASTER_ADDR", "10.10.1.2"), int(os.environ.get("MASTER_PORT", "29500")),
+                         world_size=2, is_master=args.role == "prefill", timeout=timedelta(seconds=600),
+                         wait_for_workers=True)
+        tr = make_transport(args, store)
+        (run_prefill if args.role == "prefill" else run_decode)(args, tok, model, store, tr)
+
+
+    if __name__ == "__main__":
+        with torch.no_grad():
+            main()
+
+  app-kv_transport.py: |-
+    """KV-cache transports between the prefill worker (rank 0) and the decode worker (rank 1).
+
+    RoceTransport pushes the slab with RDMA WRITE over RC queue pairs (libibverbs, Soft-RoCE `rxe`), the
+    "WRITE (push)" example of Learning Byte 04:
+
+      * decode allocates and registers the destination slab and publishes (addr, rkey) in the TCP store,
+      * prefill pushes byte ranges of its own registered slab with RDMA WRITE WITH IMMEDIATE,
+      * each range is striped across `channels` RC QPs, and every QP has its own UDP source port, so the
+        fabric can ECMP-hash the channels onto different spines,
+      * the immediate (the layer index) tells decode that a range landed; decode counts completions.
+
+    TcpTransport sends the same slab over one TCP connection, for comparison.
+
+    Only bootstrap and metadata use the TCP store, as NCCL and NIXL bootstrap over sockets.
+    """
+    import ctypes
+    import glob
+    import json
+    import random
+    import socket
+    import time
+
+    import numpy as np
+
+    ROCE_DSCP = 26
+    ECT0 = 0b10
+    PORT = 1
+    TCP_DATA_PORT = 29600
+    POLL_SLEEP = 0.0005
+
+
+    def stripes(offset, nbytes, parts):
+        """Split [offset, offset+nbytes) into `parts` contiguous ranges (last ones may be shorter or empty)."""
+        size = -(-nbytes // parts)
+        out = []
+        for i in range(parts):
+            lo = offset + i * size
+            n = max(0, min(size, offset + nbytes - lo))
+            if n:
+                out.append((i, lo, n))
+        return out
+
+
+    def roce_v2_ipv4_gid_index(dev):
+        base = f"/sys/class/infiniband/{dev}/ports/{PORT}"
+        for path in sorted(glob.glob(f"{base}/gids/*"), key=lambda p: int(p.rsplit("/", 1)[1])):
+            idx = int(path.rsplit("/", 1)[1])
+            try:
+                gid = open(path).read().strip()
+                gtype = open(f"{base}/gid_attrs/types/{idx}").read().strip()
+            except OSError:
+                continue
+            if gid.startswith("0000:0000:0000:0000:0000:ffff") and "v2" in gtype:
+                return idx
+        raise RuntimeError(f"no RoCE v2 IPv4 GID on {dev}")
+
+
+    class RoceTransport:
+        def __init__(self, store, role, dev, channels=2, tclass=(ROCE_DSCP << 2) | ECT0, log=print):
+            import pyverbs.enums as e
+            from pyverbs.addr import GID, AHAttr, GlobalRoute
+            from pyverbs.cq import CQ
+            from pyverbs.device import Context
+            from pyverbs.pd import PD
+            from pyverbs.qp import QP, QPAttr, QPCap, QPInitAttr
+
+            self.e, self.store, self.role, self.channels, self.log = e, store, role, channels, log
+            rank = 0 if role == "prefill" else 1
+            self.ctx = Context(name=dev)
+            self.pd = PD(self.ctx)
+            self.cq = CQ(self.ctx, 4096)
+            self.access = e.IBV_ACCESS_LOCAL_WRITE | e.IBV_ACCESS_REMOTE_WRITE
+            self.imm_sink = self._mr(64, e.IBV_ACCESS_LOCAL_WRITE)
+            self.gid_index = roce_v2_ipv4_gid_index(dev)
+            gid = self.ctx.query_gid(PORT, self.gid_index)
+
+            cap = QPCap(max_send_wr=512, max_recv_wr=1024, max_send_sge=1, max_recv_sge=1)
+            self.qps = [QP(self.pd, QPInitAttr(qp_type=e.IBV_QPT_RC, scq=self.cq, rcq=self.cq, cap=cap))
+                        for _ in range(channels)]
+            psn = [random.randrange(1 << 24) for _ in range(channels)]
+            me = dict(gid=str(gid), qpn=[q.qp_num for q in self.qps], psn=psn)
+            store.set(f"roce/{rank}", json.dumps(me))
+            peer = json.loads(store.get(f"roce/{1 - rank}"))
+
+            for i, qp in enumerate(self.qps):
+                attr = QPAttr(port_num=PORT)
+                attr.qp_access_flags = self.access
+                qp.to_init(attr)
+                gr = GlobalRoute(dgid=GID(peer["gid"]), sgid_index=self.gid_index, hop_limit=64, traffic_class=tclass)
+                attr.ah_attr = AHAttr(port_num=PORT, is_global=1, gr=gr)
+                attr.path_mtu = e.IBV_MTU_4096
+                attr.dest_qp_num = peer["qpn"][i]
+                attr.rq_psn = peer["psn"][i]
+                attr.max_dest_rd_atomic = 1
+                attr.min_rnr_timer = 12
+                qp.to_rtr(attr)
+                attr.sq_psn = psn[i]
+                attr.timeout = 14
+                attr.retry_cnt = 7
+                attr.rnr_retry = 7
+                attr.max_rd_atomic = 1
+                qp.to_rts(attr)
+                for _ in range(256):
+                    qp.post_recv(self._recv_wr())
+            self.qpn_to_ch = {q.qp_num: i for i, q in enumerate(self.qps)}
+            store.set(f"roce/ready/{rank}", "1")
+            store.get(f"roce/ready/{1 - rank}")
+            self.slab_mr = None
+            self.remote = None
+            self.inflight = 0
+            self.wr_seq = 0
+            log(f"roce dev={dev} gid_index={self.gid_index} gid={gid} qpn={me['qpn']} peer_gid={peer['gid']} "
+                f"peer_qpn={peer['qpn']} channels={channels} tclass=0x{tclass:02x} (DSCP {tclass >> 2}, ECN {tclass & 3})")
+
+        def _mr(self, nbytes, access):
+            from pyverbs.mr import MR
+            return MR(self.pd, nbytes, access)
+
+        def _recv_wr(self):
+            from pyverbs.wr import SGE, RecvWR
+            return RecvWR(num_sge=1, sg=[SGE(self.imm_sink.buf, 64, self.imm_sink.lkey)])
+
+        def open_request(self, rid, nbytes):
+            """Allocate and register the slab. Decode publishes (addr, rkey) for the sender."""
+            if self.slab_mr is not None:
+                self.slab_mr.close()
+            self.slab_mr = self._mr(nbytes, self.access)
+            self.remote = None
+            if self.role == "decode":
+                self.store.set(f"mr/{rid}", json.dumps([self.slab_mr.buf, self.slab_mr.rkey]))
+            raw = (ctypes.c_ubyte * nbytes).from_address(self.slab_mr.buf)
+            return np.frombuffer(raw, dtype=np.uint8)
+
+        def push(self, rid, offset, nbytes, tag):
+            """RDMA WRITE WITH IMM of slab[offset:offset+nbytes], striped over the channels. imm_data = tag."""
+            from pyverbs.wr import SGE, SendWR
+            if self.remote is None:
+                self.remote = json.loads(self.store.get(f"mr/{rid}"))
+            raddr, rkey = self.remote
+            for ch, lo, n in stripes(offset, nbytes, self.channels):
+                self.wr_seq += 1
+                wr = SendWR(wr_id=self.wr_seq, opcode=self.e.IBV_WR_RDMA_WRITE_WITH_IMM, num_sge=1,
+                            sg=[SGE(self.slab_mr.buf + lo, n, self.slab_mr.lkey)],
+                            send_flags=self.e.IBV_SEND_SIGNALED)
+                wr.imm_data = tag
+                wr.set_wr_rdma(rkey, raddr + lo)
+                self.qps[ch].post_send(wr)
+                self.inflight += 1
+
+        def _poll(self, on_recv=None):
+            n, wcs = self.cq.poll(num_entries=64)
+            for wc in wcs[:n]:
+                if wc.status != self.e.IBV_WC_SUCCESS:
+                    raise RuntimeError(f"WC error status={wc.status} opcode={wc.opcode} qpn={wc.qp_num}")
+                if wc.opcode == self.e.IBV_WC_RDMA_WRITE:
+                    self.inflight -= 1
+                elif wc.opcode == self.e.IBV_WC_RECV_RDMA_WITH_IMM:
+                    self.qps[self.qpn_to_ch[wc.qp_num]].post_recv(self._recv_wr())
+                    if on_recv:
+                        on_recv(wc.imm_data)
+            return n
+
+        def flush(self, timeout=300.0):
+            """Sender: wait until every WRITE is acknowledged by the responder (RC ACK)."""
+            deadline = time.monotonic() + timeout
+            while self.inflight:
+                if not self._poll():
+                    time.sleep(POLL_SLEEP)   # the two workers share one host: do not burn a core while waiting
+                    if time.monotonic() > deadline:
+                        raise TimeoutError(f"{self.inflight} WRITEs unacknowledged")
+
+        def wait_data(self, expected, timeout=300.0):
+            """Receiver: wait for `expected` WRITE-with-immediate completions. Returns arrival timestamps."""
+            got, first, per_tag = 0, None, {}
+
+            def on_recv(tag):
+                nonlocal got, first
+                got += 1
+                first = first or time.time()
+                per_tag[tag] = per_tag.get(tag, 0) + 1
+
+            deadline = time.monotonic() + timeout
+            while got < expected:
+                if not self._poll(on_recv):
+                    time.sleep(POLL_SLEEP)
+                    if time.monotonic() > deadline:
+                        raise TimeoutError(f"received {got}/{expected} completions")
+            return {"t_first": first, "t_last": time.time(), "messages": got, "tags": len(per_tag)}
+
+        def close_request(self):
+            pass
+
+
+    class TcpTransport:
+        def __init__(self, store, role, bind_addr="10.10.2.2", peer_addr="10.10.2.2", log=print):
+            self.store, self.role, self.log = store, role, log
+            self.slab = None
+            if role == "decode":
+                srv = socket.socket()
+                srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                srv.bind((bind_addr, TCP_DATA_PORT))
+                srv.listen(1)
+                store.set("tcp/ready", "1")
+                self.sock, peer = srv.accept()
+                srv.close()
+                log(f"tcp data connection from {peer[0]}:{peer[1]}")
+            else:
+                store.get("tcp/ready")
+                self.sock = socket.create_connection((peer_addr, TCP_DATA_PORT))
+                log(f"tcp data connection to {peer_addr}:{TCP_DATA_PORT} from port {self.sock.getsockname()[1]}")
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
+        def open_request(self, rid, nbytes):
+            self.slab = np.zeros(nbytes, dtype=np.uint8)
+            return self.slab
+
+        def push(self, rid, offset, nbytes, tag):
+            self.sock.sendall(memoryview(self.slab)[offset:offset + nbytes])
+
+        def flush(self, timeout=300.0):
+            pass
+
+        def wait_data(self, expected_unused, timeout=300.0):
+            mv, n, first = memoryview(self.slab), 0, None
+            while n < len(self.slab):
+                got = self.sock.recv_into(mv[n:], min(len(self.slab) - n, 1 << 20))
+                if not got:
+                    raise ConnectionError("peer closed during KV transfer")
+                first = first or time.time()
+                n += got
+            return {"t_first": first, "t_last": time.time(), "messages": 1, "tags": 1}
+
+  app-kvlayout.py: |-
+    """KV-cache slab layout shared by the prefill and decode workers.
+
+    The Hugging Face cache for layer L holds K and V tensors of shape [1, kv_heads, tokens, head_dim].
+    The slab stores them layer after layer, K then V, each C-contiguous:
+
+        slab = [layer 0: K | V][layer 1: K | V] ... [layer N-1: K | V]
+
+    so one layer is one contiguous byte range (what a layer-wise RDMA WRITE pushes) and the whole slab is one
+    contiguous range (what a bulk RDMA WRITE pushes). The size is analytic:
+
+        bytes = 2 * layers * kv_heads * head_dim * tokens * dtype_bytes
+
+    The slab memory itself is allocated by the transport (an RDMA-registered buffer, or a plain buffer for TCP);
+    this module only gives tensor views over it.
+    """
+    import zlib
+    from dataclasses import asdict, dataclass
+
+    import numpy as np
+    import torch
+    from transformers import DynamicCache
+
+    DTYPES = {"fp32": (torch.float32, 4), "fp16": (torch.float16, 2)}
+
+
+    @dataclass
+    class KVSpec:
+        layers: int
+        kv_heads: int
+        head_dim: int
+        tokens: int
+        dtype: str  # "fp32" | "fp16"
+
+        @property
+        def torch_dtype(self):
+            return DTYPES[self.dtype][0]
+
+        @property
+        def elem_bytes(self):
+            return DTYPES[self.dtype][1]
+
+        @property
+        def layer_bytes(self):
+            return 2 * self.kv_heads * self.tokens * self.head_dim * self.elem_bytes
+
+        @property
+        def total_bytes(self):
+            return self.layers * self.layer_bytes
+
+        @property
+        def bytes_per_token(self):
+            return 2 * self.layers * self.kv_heads * self.head_dim * self.elem_bytes
+
+        def to_dict(self):
+            return asdict(self)
+
+        @staticmethod
+        def from_dict(d):
+            return KVSpec(**d)
+
+
+    def spec_from_config(cfg, tokens, dtype):
+        head_dim = getattr(cfg, "head_dim", None) or cfg.hidden_size // cfg.num_attention_heads
+        return KVSpec(cfg.num_hidden_layers, cfg.num_key_value_heads, head_dim, tokens, dtype)
+
+
+    def layer_view(slab, spec, layer):
+        """Tensor [2, kv_heads, tokens, head_dim] (index 0 = K, 1 = V) over the slab bytes of one layer."""
+        off = layer * spec.layer_bytes
+        raw = torch.from_numpy(slab[off:off + spec.layer_bytes])
+        return raw.view(spec.torch_dtype).reshape(2, spec.kv_heads, spec.tokens, spec.head_dim)
+
+
+    def pack_layer(slab, spec, layer, k, v):
+        """Copy one layer's K and V ([1, kv_heads, tokens, head_dim]) into the slab, casting to the wire dtype."""
+        t = layer_view(slab, spec, layer)
+        t[0].copy_(k[0])
+        t[1].copy_(v[0])
+
+
+    def pack_cache(slab, spec, cache):
+        for i in range(spec.layers):
+            pack_layer(slab, spec, i, cache.key_cache[i], cache.value_cache[i])
+
+
+    def unpack_cache(slab, spec):
+        """Rebuild a DynamicCache (fp32, the model dtype) from the slab."""
+        layers = []
+        for i in range(spec.layers):
+            t = layer_view(slab, spec, i).to(torch.float32)
+            layers.append((t[0].unsqueeze(0).contiguous(), t[1].unsqueeze(0).contiguous()))
+        return DynamicCache.from_legacy_cache(tuple(layers))
+
+
+    def slab_crc32(slab):
+        """Exact byte integrity of the transferred slab."""
+        return zlib.crc32(memoryview(slab)) & 0xFFFFFFFF
+
+
+    def slab_checksum(slab, spec):
+        """Sum of all KV values in float64, the analogue of the training lab's gradient checksum."""
+        return float(torch.from_numpy(slab[:spec.total_bytes]).view(spec.torch_dtype).double().sum())
+
+
+    def weights_checksum(model):
+        return float(sum(p.double().sum() for p in model.parameters()))
+
+  prompts-source.txt: |-
+    A data center network for machine learning is built differently from one for web traffic. A web request is a short conversation between a client and a server, and thousands of independent flows share every link. A backend network for AI is dominated by a few very large flows that run between accelerators for the whole life of a job. Each flow carries tensors, and the tensors are big. When a flow is slow, the accelerator at the other end sits idle, and an idle accelerator is the most expensive thing in the building.
+
+    The standard topology for this fabric is a Clos network. Servers connect to leaf switches. Every leaf connects to every spine. Traffic between two servers on different leaves crosses exactly one spine, so every path has the same length, and the number of equal cost paths is the number of spines. Routing uses a simple underlay, often eBGP with one autonomous system per leaf and a shared autonomous system for the spines. Each switch installs several next hops for a remote prefix and spreads flows over them. This is equal cost multipath, or ECMP.
+
+    ECMP chooses a path by hashing header fields, usually the source and destination addresses, the protocol, and the transport ports. All the packets of one flow hash to the same path, which keeps them in order. This works well when there are many flows, because the law of large numbers evens out the load. It works badly when there are few flows. Two large flows have a fair chance of landing on the same spine while another spine is idle. The hash has low entropy, and the fabric looks congested even though total capacity is plentiful.
+
+    RDMA over Converged Ethernet, version two, carries remote direct memory access inside UDP packets. The destination port is 4791. The source port is chosen by the sender and is often derived from the queue pair number, so it provides the entropy that ECMP needs. Behind the UDP header sits the InfiniBand base transport header, which names the destination queue pair and a packet sequence number. For an RDMA write, the first packet also carries an extended header with the remote virtual address, the remote key, and the total length of the message. The payload follows, and an invariant checksum closes the packet.
+
+    A reliable connection queue pair expects packets in order. If one packet is lost, the receiver notices a gap in the sequence numbers and asks the sender to start again from the gap. This is go back N retransmission. It is simple to implement in hardware, but it makes loss expensive, because one lost packet causes everything after it to be sent twice. Production RoCE fabrics therefore try hard not to lose packets. They mark packets with explicit congestion notification before queues overflow, they let the receiver ask the sender to slow down with congestion notification packets, and some also use priority flow control to pause a link before a buffer fills.
+
+    Large language model inference has two phases that stress a machine in different ways. The first phase, called prefill, reads the whole prompt at once. Every prompt token is processed in parallel, which keeps the matrix units busy, so prefill is limited by compute. While it runs, each attention layer computes a key vector and a value vector for every prompt token and stores them. That store is the key value cache. The second phase, called decode, produces the answer one token at a time. Each step reads the entire cache and the model weights to produce a single new token, and it appends one new key and value to the cache. Decode is limited by memory bandwidth and by the latency of each step.
+
+    Because the two phases want different things, operators have started to run them on different machines. A prefill pool is sized for compute and a decode pool is sized for memory bandwidth, and each can be scaled independently. A long prompt arriving on the prefill pool no longer stalls the streaming answers of other users on the decode pool. The price is that the cache created by prefill must now travel to the machine that will run decode. The cache can be hundreds of megabytes for a long prompt on a large model, and the user is waiting, so the transfer sits directly on the path to the first token.
+
+    The transfer is usually a push or a pull between registered memory regions. The decode side allocates and registers a buffer, and tells the prefill side its address and remote key. The prefill side then issues RDMA writes into that buffer, and the final write carries an immediate value that tells the decode side the data is complete. The switches in between know nothing about attention or tensors. They see UDP packets with a DSCP value, they hash the headers, they queue the packets, and they forward them. The quality of the answer cannot depend on the network, but the time to the first token certainly can.
+
+    Operators measure the cost of this handoff in several ways. The first is the volume of the cache, which grows linearly with the number of prompt tokens, the number of layers, the number of key value heads, the size of each head, and the number of bytes used for each stored number. Grouped query attention reduces the number of key value heads, and storing the cache in a narrower number format halves its size again. The second is the time spent waiting for the network, which depends on the bandwidth that one flow can actually obtain, not on the bandwidth printed on the port. A flow that is hashed onto a busy spine, or that suffers loss and must retransmit, sees only a fraction of the line rate. The third is how much of the transfer can be hidden behind computation. If the prefill machine sends each layer as soon as that layer is finished, the network works while the processors continue with the next layer, and only the tail of the transfer is exposed to the user.
+
+    None of these costs can be seen from inside the model. They appear in the counters of the switches, in the retransmission statistics of the network cards, and in the timestamps of the packets. That is why a lab that moves a real cache between two real processes across a real routed fabric is useful. It lets an engineer change one variable at a time, such as the prompt length, the number of queue pairs, the sending rate, or the delay between the leaves, and watch what happens to the first token. It also gives a way to check, with a byte checksum and a comparison of the generated tokens, that the answer produced after the handoff is exactly the answer that would have been produced without it.
+
+    Finally, there is the matter of failure. Links go down, optics fail, and switches reboot. A reliable connection will time out and retransmit, and as long as another path exists the transfer will complete, but the request that was in flight will see a stall. A good test of any fabric designed for inference is to remove a spine link in the middle of a transfer and measure how long the user waits, and whether the tokens that follow are still correct.
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-inference-decode-files
+  namespace: ai-inference
+data:
+  app-__pycache__-infer.cpython-314.pyc: |-
+    +
+        h!áj+  ã                   ó@  € R t ^ RIt^ RIt^ RIt^ RIt^ RIt^ RIt^ RIHt ^ RI	t	]P                  P                  ^ ]P                  P                  ]P                  P                  ]4      4      4       ^ RIt]P"                  P%                  RR4      t]P"                  P%                  RR4      tR tR tR	 tR
+     tR tRR ltR tR tR tR tR tR t R t!]"R8X  d,   ]	PF                  ! 4       ;_uu_ 4        ]!! 4        RRR4       R# R#   + '       g   i     R# ; i)aK  Disaggregated LLM inference: prefill on one worker, decode on the other, KV cache over RoCEv2.
+
+      --role prefill     process the prompt, build the real KV cache, push it to the decode worker (rank 0, hosts the store)
+      --role decode      receive the KV cache into registered memory, rebuild it, generate tokens (rank 1)
+      --role colocated   prefill and decode in one process with no network: the reference run
+
+    Greedy decoding, fixed seed and thread count, so the colocated and disaggregated runs must produce identical
+    tokens and an identical KV byte checksum. With --kv-dtype fp16 the colocated run quantizes the cache at the same
+    point where the disaggregated run does, so the comparison stays exact.
+
+    Timeline (wall clock, both workers share the host clock):
+      t_req       the request enters prefill
+      prefill_ms  forward pass over the prompt (includes layer-wise pushes when --mode layerwise)
+      kv_ready    the last KV byte is in decode memory (immediate of the last WRITE received)
+      ttft_ms     max(kv_ready, first token published) - t_req: decode emits token 0 once it holds the whole cache
+    N)Ú	timedeltaÚ	MODEL_DIRz/models/SmolLM2-135MÚPROMPT_FILEz/lab/prompts/source.txtc                 ó    € \        V R R7       R# )T)ÚflushN)Úprint)Úmsgs   &Úapp/infer.pyÚlogr
+       "   s   € Ü	ˆ#T×ó    c                  óN   € R P                  R V P                  4        4       4      # )Ú c              3   óp   "  € T F,  w  r\        V\        4      '       d	   V R VR 2MV R V 2x € K.  	  R# 5i)Ú=z.2fN)Ú
+    isinstanceÚfloat)Ú.0ÚkÚvs   &  r	   Ú	<genexpr>Úkvs.<locals>.<genexpr>'   s;   é € ĞbÑWaÉtÈq¤j°´E×&:Ò&:qc˜˜1˜S˜'‘NÀ1À#ÀQÀqÀcÀ
+    ÔJÓWaùs   ‚46)ÚjoinÚitems)Úkws   ,r	   Úkvsr   &   s!   € Ø8‰8ÑbĞWY×W_ÑW_ÔWaÓbÓbĞbr   c            
+          óÔ  € \         P                  ! 4       p V P                  R . RO\        P                  P                  RR4      R7       V P                  R\        ^€R7       V P                  R\        ^R7       V P                  RRR	.RR7       V P                  R
+    RR.RR7       V P                  R\        ^R7       V P                  RRR.RR7       V P                  R\        ^R7       V P                  R\        \        \        P                  P                  RR4      4      R7       V P                  RRR.RRR7       V P                  R\        ^ R7       V P                  4       # )z--roleÚ	colocatedÚROLE)ÚchoicesÚdefaultz--prompt-tokens)Útyper   z--max-new-tokensz
+    --kv-dtypeÚfp32Úfp16z--modeÚbulkÚ	layerwisez
+    --channelsz--transportÚroceÚtcpz
+    --requestsz	--threadsÚTORCH_THREADSÚ4z	--controlÚnoneúzero-kvzSdecode only: ignore the received KV and use zeros, to show the KV carries the state)r   r   Úhelpz--seed)ÚprefillÚdecoder   )ÚargparseÚArgumentParserÚadd_argumentÚosÚenvironÚgetÚintÚ
+    parse_args)Úps    r	   Úparser7   *   s,  € Ü×ÒÓ!€AØ‡NN8Ò%GÔQS×Q[ÑQ[×Q_ÑQ_Ğ`fĞhsÓQt€NÔuØ‡NNĞ$¬3¸€NÔ<Ø‡NNĞ%¬C¸€NÔ<Ø‡NN<¨&°&Ğ)9À6€NÔJØ‡NN8 f¨kĞ%:ÀF€NÔKØ‡NN<¤c°1€NÔ5Ø‡NN=¨6°5¨/À6€NÔJØ‡NN<¤c°1€NÔ5Ø‡NN;¤S´#´b·j±j·n±nÀ_ĞVYÓ6ZÓ2[€NÔ\Ø‡NN;¨°Ğ(;ÀVØmğ ô oà‡NN8¤#¨q€NÔ1Ø<‰<‹>Ğr   c                  ó¨   € ^ RI Hp Hp VP                  \        4      pV P                  \        \
+            P                  R7      P                  4       pW#3# )é    )ÚAutoModelForCausalLMÚAutoTokenizer)Útorch_dtype)Útransformersr:   r;   Úfrom_pretrainedr   ÚtorchÚfloat32Úeval)r:   r;   ÚtokÚmodels       r	   ÚloadrD   ;   s?   € ß@Ø
+    ×
+    'Ñ
+    '¬	Ó
+    2€CØ ×0Ñ0´ÌÏÉĞ0ÓV×[Ñ[Ó]€EØˆ:Ğr   c                 óî   € V ! \        \        4      P                  4       R R7      P                  pVP                  ^,          V8  d#   \        RVP                  ^,           RV 24      hVRRV13,          # )Úpt)Úreturn_tensorszprompt source has only z tokens, need ºNNNN)Úopenr   ÚreadÚ	input_idsÚshapeÚ
+    SystemExit)rB   ÚnÚidss   && r	   Ú
+    prompt_idsrP   B   se   € Ù
+    Œd”;Ó×$Ñ$Ó&°tÔ
+    <×
+    FÑ
+    F€CØ
+    ‡yy…|aÔÜĞ2°3·9±9¸Qµ<°.ÀÈqÈcĞRÓSĞSØˆq"1"ˆu:Ğr   c                 óf  € V UUu. uF1  w  rEV P                   P                  V,          P                  V4      NK3  	  ppp V ! WR ^R7      pV F  pVP                  4        K  	  \	        VP
+                      R,          P                  4       4      # u uppi   T F  pTP                  4        K  	  i ; i)T)rK   Úpast_key_valuesÚ	use_cacheÚnum_logits_to_keep©r9   éÿÿÿÿ)rC   ÚlayersÚregister_forward_hookÚremover4   ÚlogitsÚargmax)rC   rO   ÚcacheÚhooksÚiÚhÚhandlesÚouts   &&&&    r	   Úprefill_forwardrb   I   s“   € ÙJOÔPÉ%Á$À!ˆu{‰{×!Ñ! !Õ$×:Ñ:¸1Ö=É%€GÑPğÙ˜cÀDĞ]^Ô_ˆãˆAØH‰HJñ äˆsz‰z˜%Õ ×'Ñ'Ó)Ó*Ğ*ùó Qøó ˆAØH‰HJò ús   †7BÁB ÂB0c                óŒ  € V.. reTp\        V^,
+              4       F¦  p\        P                  ! 4       p	V ! \        P                  ! V..4      VRR7      p
+    \        V
+    P                  R,          P                  4       4      pVP                  \        P                  ! 4       V	,
+              R,          4       VP                  V4       K¨  	  WV3# )z^Greedy decode. Token 0 is `first` (already known); returns ids and per-token step times in ms.T)rK   rR   rS   éè  rU   )	ÚrangeÚtimeÚperf_counterr?   Útensorr4   rZ   r[   Úappend)rC   rB   r\   ÚfirstÚn_newrO   ÚstepsÚcurÚ_Útra   s   &&&&&      r	   Údecode_looprp   S   s   € à˜"ˆØ
+    €CÜ5˜1•9ÖˆÜ×ÒÓˆÙœeŸlšl¨S¨E¨7Ó3ÀUĞVZÔ[ˆÜ#—*‘*˜UÕ#×*Ñ*Ó,Ó-ˆØ‰”d×'Ò'Ó)¨AÕ-°Õ5Ô6Ø
+    ‰
+    3ñ ğ ˆ:Ğr   c                 ó¬   € V '       g   / # \        V 4      p\        \        P                  ! V 4      V\	        V4      ^,          ,          VR,          R7      # )é   )Úitl_mean_msÚ
+    itl_p50_msÚ
+    itl_max_msrV   )ÚsortedÚdictÚ
+    statisticsÚmeanÚlen)rl   Úss   & r	   Úitl_summaryr|   `   s>   € ßØˆ	Üˆu‹€AÜœJŸOšO¨EÓ2¸qÄÀQÃÈ1Å½~ĞZ[Ğ\^ÕZ_Ô`Ğ`r   c                 óì  € \        V P                  4       EFY  p\        WP                  4      p\        P
+                      ! VP                  VP                  ^,          V P                  4      p\        P                  ! 4       p\        P                  ! 4       p\        W$V4      p\        P                  ! 4       V,
+              R,          p	\        P                  ! VP                  \        P                   R7      P#                  4       p
+    \        P                  ! 4       p\        P$                  ! W¥V4       \        P                  ! 4       V,
+              R,          p\        P                  ! 4       p\        P&                  ! W¥4      p\        P                  ! 4       V,
+              R,          p\)        W!WxV P*                  4      w  rï\-        RV R2\/        RRVP0                  RVP2                  RVP                  RV	R	VR
+    VRV	R\        P4                  ! V
+    4      R R\        P6                  ! W¥4      R /	\9        V4      B ,           4       \-        RV RV 24       \-        RV RVP;                  V4      : 24       EK\  	  R# )é   rd   )Údtypezrole=colocated req=r   Úprompt_tokensÚkv_dtypeÚkv_bytesÚ
+    prefill_msÚpack_msÚ	unpack_msÚttft_msÚkv_crc32Ú08xÚkv_checksumú.6fú generated_ids=ú text=N© )re   ÚrequestsrP   r€   ÚkvÚspec_from_configÚconfigrL   r   rf   rg   ÚDynamicCacherb   r?   ÚzerosÚtotal_bytesÚuint8ÚnumpyÚ
+    pack_cacheÚunpack_cacherp   Úmax_new_tokensr
+       r   Útokensr   Ú
+    slab_crc32Úslab_checksumr|   r-   )ÚargsrB   rC   ÚrrO   ÚspecÚt_reqr\   rj   rƒ   Úslabro   r„   r…   Úgenrl   s   &&&             r	   Úrun_colocatedr£   g   s  € Ü4—=‘=×!ˆÜ˜×0Ñ0Ó1ˆÜ×"Ò" 5§<¡<°·±¸1µ¸t¿}¹}ÓMˆÜ×!Ò!Ó#ˆÜ—’Ó!ˆÜ ¨EÓ2ˆÜ×'Ò'Ó)¨EÕ1°TÕ9ˆ
+    ä{Š{˜4×+Ñ+´5·;±;Ô?×EÑEÓGˆÜ×ÒÓˆÜ
+    Šd %Ô(Ü×$Ò$Ó&¨Õ*¨dÕ2ˆÜ×ÒÓˆÜ—’ Ó+ˆÜ×&Ò&Ó(¨1Õ,°Õ4ˆ	Ü  ¨U¸4×;NÑ;NÓO‰
+    ˆÜĞ! !  AĞ&¬ñ *"¸4¿;¹;ğ *"ĞQU×Q[ÑQ[ğ *"Ğfj×fvÑfvğ *"Ø!ğ*"Ø+2ğ*"Ø>Gğ*"ØQ[ğ*"äŸš dÓ+¨CĞ0ğ*"äBD×BRÒBRĞSWÓB^Ğ_bĞAcğ*"ô ˜%Ó ñ*"õ "ô 	#ô 	Ğ! !  O°C°5Ğ9Ô:ÜĞ! !  F¨3¯:©:°c«?Ñ*=Ğ>×?ó+ "r   c                 óŞ   € V P                   R 8X  d@   ^ RIHp V! WP                  \        P
+                      R,          V P                  \        R7      # ^ RIHp V! WP                  \        R7      # )r%   )ÚRoceTransportÚROCE_DEV)Úchannelsr
+       )ÚTcpTransport)r
+       )	Ú	transportÚkv_transportr¥   Úroler1   r2   r§   r
+       r¨   )r   Ústorer¥   r¨   s   &&  r	   Úmake_transportr­   €   sK   € Ø‡~~˜Ôİ.Ù˜U§I¡I¬r¯z©z¸*Õ/EĞPT×P]ÑP]ÔcfÔgĞgİ)Ù˜Ÿy™y¬cÔ2Ğ2r   c                 óT  aaaaaaa€ \        V P                  4       EF  o\        WP                  4      p\        P
+                      ! VP                  VP                  ^,          V P                  4      o\        P                  ! 4       pVP                  RS 2\        P                  ! \        SP                  4       V P                  V P                   V P"                  VR7      4      4       SP%                  SSP&                  4      o\        P(                  ! 4       oRo/ oVVVVVVV3R lpV P                  R8X  d-   \        SP*                  4       Uu. uF  qˆV! V4      3NK  	  upM. p	\        P,                  ! 4       p
+    \/        W%SV	4      p\        P,                  ! 4       V
+    ,
+              R,          pVP                  RS 2\1        V4      4       V P                  R8X  do   \        P,                  ! 4       p\        P2                  ! SSS4       \        P,                  ! 4       V,
+              R,          oSP5                  S^ SP&                  ^ 4       \        P,                  ! 4       pSP7                  4        \        P,                  ! 4       V
+    ,
+              R,          p\        P8                  ! S4      p\;        R	S R
+    2\=        SP>                  SP@                  SP&                  SPB                  V P                  V P                   V P"                  TSTWü,
+              V P                  R8X  d   SMR,
+              VR \        PD                  ! SS4      R VR7      ,           4       \        PF                  ! VPI                  RS 24      4      p\;        R	S R
+    2\=        R/ VB ,           4       EK„  	  R# u upi )r~   úmeta/)rŸ   Úmoder§   r©   r    g        c                 ó$   <a € VV VVVVVV3R  lpV# )c                 óŒ  <€ \         P                  ! 4       p\        P                  ! S	S
+    SSP                  S,          SP
+                      S,          4       S\         P                  ! 4       V,
+              R ,          ,          oSP                  SSS
+    P                  ,          S
+    P                  S4       \         P                  ! 4       SS&   R# )rd   N)rf   rg   r   Ú
+    pack_layerÚ	key_cacheÚvalue_cacheÚpushÚlayer_bytes)ÚmoduleÚinputsÚoutputro   r\   r^   r„   Úpush_tr   r¡   rŸ   Útrs   &&& €€€€€€€€r	   ÚhookÚ-run_prefill.<locals>.layer_hook.<locals>.hook•   sŒ   ø€ ä×%Ò%Ó'Ü—’˜d D¨!¨U¯_©_¸QÕ-?À×ARÑARĞSTÕAUÔVØœD×-Ò-Ó/°!Õ3°tÕ;Õ;Ø—‘˜˜1˜t×/Ñ/Õ/°×1AÑ1AÀ1ÔEÜ ×-Ò-Ó/q“	r   r   )	r^   r½   r\   r„   r»   r   r¡   rŸ   r¼   s	   f €€€€€€€r	   Ú
+    layer_hookÚrun_prefill.<locals>.layer_hook”   s   ù€ ÷0ô 0ğ ˆKr   r$   rd   úfirst/r#   zrole=prefill req=r   rˆ   rŠ   )r€   r   r‚   Úbytes_per_tokenr°   r§   r©   rƒ   r„   Úpush_done_msÚexposed_transfer_msr‡   r‰   Úfirst_tokenúdone/Nr   )%re   r   rP   r€   r   r   r‘   rL   r   rf   ÚsetÚjsonÚdumpsrw   Úto_dictr°   r§   r©   Úopen_requestr”   r’   rW   rg   rb   Ústrr—   r¶   r   r›   r
+       r   rš   r   rÂ   rœ   Úloadsr3   )r   rB   rC   r¬   r¼   rO   r    r¿   r^   r]   Út_crj   rƒ   ro   Út_pushedrÃ   ÚcrcÚdoner\   r„   r»   r   r¡   rŸ   s   &&&&f             @@@@@@r	   Úrun_prefillrÒ   ˆ   sÈ  ş€ Ü4—=‘=×!ˆÜ˜×0Ñ0Ó1ˆÜ×"Ò" 5§<¡<°·±¸1µ¸t¿}¹}ÓMˆÜ—	’	“ˆØ	‰	E˜!˜+œtŸzšz¬$°D·L±L³NÈÏÉĞ]a×]jÑ]jØ9=¿¹Èuô+Vó  Wô 	Xà‰˜q $×"2Ñ"2Ó3ˆÜ—’Ó!ˆØˆØˆ÷	ó 	ğ EIÇIÁIĞQ\ÔD\¬U°4·;±;Ô-?Ó@Ñ-?¨‘Z “]Ó#Ñ-?Ò@ĞbdˆÜ×ÒÓ!ˆÜ ¨E°5Ó9ˆÜ×'Ò'Ó)¨CÕ/°4Õ7ˆ
+    Ø	‰	F˜1˜#,¤ E£
+    Ô+Ø9‰9˜ÔÜ×!Ò!Ó#ˆAÜMŠM˜$  eÔ,Ü×(Ò(Ó*¨QÕ.°$Õ6ˆGØG‰GAq˜$×*Ñ*¨AÔ.Ü×$Ò$Ó&ˆØ
+    ‰Œ
+    Ü×)Ò)Ó+¨cÕ1°TÕ9ˆÜmŠm˜DÓ!ˆÜĞ ˜s !Ğ$¤s¸¿¹ÈtÏzÉzĞdh×dtÑdtØ ×0Ñ0°t·y±yÈ4Ï=É=Ğdh×drÑdrØ!¨7ÀØ ,Õ 9ÈÏ	É	ĞU[ÔH[¹WĞadÕ eØ˜Cy´"×2BÒ2BÀ4ÈÓ2NÈsĞ1SĞbgô	(iõ iô 	jô
+     zŠz˜%Ÿ)™) e¨A¨3 KÓ0Ó1ˆÜĞ ˜s !Ğ$¤s¡{¨T¡{Õ2×3óS "ùò* As   ÅN%c           !      ó  € \        V P                  4       EF2  p\        P                  ! VP	                  R V 24      4      p\
+            P                  P                  VR,          4      pVP                  WWP                  4      pVR,          R8X  d   VP                  VR,          ,          MVR,          p	V P                  R8X  dU   ^ VR&   \        VP	                  RV 24      4      p
+    VP                  V	4       ^ VR&   \        P                  ! 4       pRVR	V	/pM7VP                  V	4      pVR
+    ,          p\        VP	                  RV 24      4      p
+    \        P                  ! 4       p\        W½4      p\
+            P                   ! V4      p\        P"                  ! 4       p\
+            P$                  ! W‡4      p\        P"                  ! 4       V,
+              R,          p\'        W!VW P(                  4      w  pp\+        R!RVP,                  RVP.                  RVP                  RVR,          RVR,          RVR,          RV P                  RW¶R,          ,
+              R,          RWæR,          ,
+              R,          RVRVR	,          RVR R\
+            P0                  ! W‡4      R /\3        V4      B p\5        RV R2\7        R!/ VB ,           4       \5        RV RV 24       \5        RV RVP9                  V4      : 24       VP;                  RV 2\        P<                  ! \+        \?        VR,          ^4      VR,          \?        V^4      R7      4      4       EK5  	  R # )"r¯   rŸ   r°   r$   r§   r*   rH   rÁ   Út_firstÚmessagesÚt_lastrd   r€   r   r‚   r©   ÚcontrolÚkv_ready_msr    r†   r…   Úwrites_receivedr‡   rˆ   r‰   rŠ   zrole=decode req=r   r‹   rŒ   rÆ   )Údecode_ttft_msÚdecode_kv_crc32Údecode_unpack_msNr   ) re   r   rÈ   rÍ   r3   r   ÚKVSpecÚ	from_dictrË   r”   rW   r×   r4   Ú	wait_datarf   Úmaxr›   rg   r˜   rp   r™   rw   rš   r   rœ   r|   r
+       r   r-   rÇ   rÉ   Úround)r   rB   rC   r¬   r¼   r   ÚmetarŸ   r¡   Úexpectedrj   Út_kvÚinforÔ   Út_readyrĞ   ro   r\   r…   r¢   rl   Úress   &&&&&                 r	   Ú
+    run_decoderè   µ   s  € Ü4—=‘=×!ˆÜzŠz˜%Ÿ)™) e¨A¨3 KÓ0Ó1ˆÜy‰y×"Ñ" 4¨¥<Ó0ˆØ‰˜q×"2Ñ"2Ó3ˆØ59¸&µ\À[Ô5P4—;‘;  jÕ!1Ö1ĞVZĞ[eÕVfˆØ<‰<˜9Ô$ØˆD‰GÜ˜Ÿ	™	 F¨1¨# ,Ó/Ó0ˆEØL‰L˜Ô"ØˆD‰GÜ—9’9“;ˆDØ˜t Z°Ğ:‰Dà—<‘< Ó)ˆDØ˜•>ˆDÜ˜Ÿ	™	 F¨1¨# ,Ó/Ó0ˆEÜ—)’)“+ˆÜdÓ$ˆÜmŠm˜DÓ!ˆÜ×ÒÓˆÜ—’ Ó+ˆÜ×&Ò&Ó(¨1Õ,°Õ4ˆ	Ü  ¨U°E×;NÑ;NÓO‰
+    ˆˆUÜñ \ §¡ğ \°t·z±zğ \ÈD×L\ÑL\ğ \ĞcgĞhnÕcoğ \Ø  Õ,ğ\Ø8<¸[Õ8Iğ\ØSW×S_ÑS_ğ\à $¨G¥}Õ 4¸Õ<ğ\ğ $¨7¥mÕ3°tÕ;ğ\ğ HQğ\ğ $(¨
+    Õ#3ğ	\ğ BEÀSÀ	ğ	\ô
+     #%×"2Ò"2°4Ó">¸sĞ!Cğ\ô
+     ITĞTYÓHZñ\ˆô 	Ğ˜q˜c Ğ#¤c¡j¨C¡jÕ0Ô1ÜĞ˜q˜c °°Ğ6Ô7ÜĞ˜q˜c ¨¯
+    ©
+    °3«Ñ':Ğ;Ô<Ø	‰	E˜!˜+œtŸzšz¬$¼eÀCÈ	ÅNĞTUÓ>VĞhkĞlvÕhwÜ@EÀiĞQRÓ@Sô+Uó  V÷ 	WóA "r   c                  óÜ  € \        4       p \        P                  ! V P                  4       \        P                  ! V P
+                      4       \        P                  ! 4       p\        4       w  r#VP                  p\        R V P                   R\        P                  P                  \        4       RVP                    RVP"                   RVP$                  VP&                  ,           R\        P                  ! 4       V,
+              R RV P                   R\(        P*                  ! V4      R	 24       V P                  R
+    8X  d   \-        WV4      # ^ RIHp V! \        P2                  P5                  RR4      \7        \        P2                  P5                  RR4      4      ^V P                  R8H  \9        RR7      RR7      p\;        W4      pV P                  R8X  d   \<        M\>        ! WW6V4       R# )zrole=z model=z layers=z
+     kv_heads=z
+     head_dim=z load_s=z.1fz	 threads=z weights_checksum=rŠ   r   )ÚTCPStoreÚMASTER_ADDRz	10.10.1.2ÚMASTER_PORTÚ29500r,   iX  )ÚsecondsT)Ú
+    world_sizeÚ	is_masterÚtimeoutÚwait_for_workersN) r7   r?   Úset_num_threadsÚthreadsÚmanual_seedÚseedrf   rg   rD   r‘   r
+       r«   r1   ÚpathÚbasenamer   Únum_hidden_layersÚnum_key_value_headsÚhidden_sizeÚnum_attention_headsr   Úweights_checksumr£   Útorch.distributedrê   r2   r3   r4   r   r­   rÒ   rè   )r   ro   rB   rC   Úcfgrê   r¬   r¼   s           r	   Úmainr   Ú   s  € Ü‹7€DÜ	×Ò˜$Ÿ,™,Ô'Ü	×Òd—i‘iÔ Ü×ÒÓ€AÜ“J€CØ
+    ,‰,€CÜˆ%—	‘	ˆ{˜'¤"§'¡'×"2Ñ"2´9Ó"=Ğ!>¸hÀs×G\ÑG\ĞF]ğ ^Ø×+Ñ+Ğ,¨J°s·±È#×JaÑJaÕ7aĞ6bğ cÜ×#Ò#Ó%¨Õ)¨#Ğ.¨i¸¿¹°~ğ FÜ×/Ò/°Ó6°sĞ;ğ	=ô >ğ ‡yyKÔÜ˜T¨Ó.Ğ.å*Ù”R—Z‘Z—^‘^ M°;Ó?ÄÄRÇZÁZÇ^Á^ĞTaĞcjÓEkÓAlØ !¨T¯Y©Y¸)Ñ-CÌYĞ_bÔMcØ&*ô,€Eô 
+    ˜Ó	$€BØ—I‘I Ô*…[´
+    Ğ:¸DÀuĞUWÖXr   Ú__main__)r   )$Ú__doc__r.   rÈ   r1   rx   Úsysrf   Údatetimer   r?   r÷   ÚinsertÚdirnameÚabspathÚ__file__Úkvlayoutr   r2   r3   r   r   r
+       r   r7   rD   rP   rb   rp   r|   r£   r­   rÒ   rè   r   Ú__name__Úno_gradr   r   r	   Ú<module>r     só   ğñó  Û Û 	Û Û 
+    Û İ ã à ‡‡2—7‘7—?‘? 2§7¡7§?¡?°8Ó#<Ó=Ô >Û àJ‰JN‰N˜;Ğ(>Ó?€	Øj‰jn‰n˜]Ğ,EÓF€òòcòò"òô+ò
+    òaò@ò23ò*4òZ"WòJYğ, ˆzÔØ	ŠÙŒ÷ 
+    ‰ñ ß	ˆús   Ã8DÄD	
+  app-__pycache__-kv_transport.cpython-314.pyc: |-
+    +
+        1áj&  ã                   óŠ   € R t ^ RIt^ RIt^ RIt^ RIt^ RIt^ RIt^ RIt^t	^t
+    ^tRtRtR tR t ! R R4      t ! R R	4      tR# )
+    aQ  KV-cache transports between the prefill worker (rank 0) and the decode worker (rank 1).
+
+    RoceTransport pushes the slab with RDMA WRITE over RC queue pairs (libibverbs, Soft-RoCE `rxe`), the
+    "WRITE (push)" example of Learning Byte 04:
+
+      * decode allocates and registers the destination slab and publishes (addr, rkey) in the TCP store,
+      * prefill pushes byte ranges of its own registered slab with RDMA WRITE WITH IMMEDIATE,
+      * each range is striped across `channels` RC QPs, and every QP has its own UDP source port, so the
+        fabric can ECMP-hash the channels onto different spines,
+      * the immediate (the layer index) tells decode that a range landed; decode counts completions.
+
+    TcpTransport sends the same slab over one TCP connection, for comparison.
+
+    Only bootstrap and metadata use the TCP store, as NCCL and NIXL bootstrap over sockets.
+    Ni s  gü©ñÒMb@?c           	     óâ   € V) V,          ) p. p\        V4       FR  pWV,          ,           p\        ^ \        W0V,           V,
+              4      4      pV'       g   K?  VP                  WVV34       KT  	  V# )zaSplit [offset, offset+nbytes) into `parts` contiguous ranges (last ones may be shorter or empty).)ÚrangeÚmaxÚminÚappend)ÚoffsetÚnbytesÚpartsÚsizeÚoutÚiÚloÚns   &&&     Úapp/kv_transport.pyÚstripesr       sf   € àˆW˜ÕĞ€DØ
+    €CÜ5\ˆØ˜$•hÕˆÜ”3t f_¨rÕ1Ó2Ó3ˆß‰1ØJ‰J˜˜qzÖ"ñ	 ğ
+     €Jó    c                 óæ  € R V  R\          2p\        \        P                  ! V R24      R R7       F  p\        VP	                  R^4      ^,          4      p \        V4      P                  4       P                  4       p\        V RV 24      P                  4       P                  4       pTP                  R4      '       g   K’  RT9   g   K›  Tu # 	  \        R	V  24      h  \         d     K½  i ; i)
+    z/sys/class/infiniband/z/ports/z/gids/*c                 óF   € \        V P                  R ^4      ^,          4      # )Ú/)ÚintÚrsplit)Úps   &r   Ú<lambda>Ú(roce_v2_ipv4_gid_index.<locals>.<lambda>.   s   € Ä#ÀaÇhÁhÈsĞTUÓFVĞWXÕFYÔBZr   )Úkeyr   z/gid_attrs/types/z0000:0000:0000:0000:0000:ffffÚv2zno RoCE v2 IPv4 GID on )ÚPORTÚsortedÚglobr   r   ÚopenÚreadÚstripÚOSErrorÚ
+    startswithÚRuntimeError)ÚdevÚbaseÚpathÚidxÚgidÚgtypes   &     r   Úroce_v2_ipv4_gid_indexr+   ,   sİ   € Ø# C 5¨´¨vĞ6€DÜ”t—y’y D 6¨Ğ!1Ó2Ñ8Z×[ˆÜ$—+‘+˜c 1Ó% aÕ(Ó)ˆğ	Üt“*—/‘/Ó#×)Ñ)Ó+ˆCÜ˜D˜6Ğ!2°3°%Ğ8Ó9×>Ñ>Ó@×FÑFÓHˆEğ >‰>Ğ9×:Ô:¸tÀu¾}ØŠJñ \ô Ğ0°°Ğ6Ó
+    7Ğ7øô	 ô 	Úğ	ús   ÁAC!Ã!C0Ã/C0c                   óˆ   a € ] tR t^:t o ^]^,          ],          ]3R ltR tR t	R t
+    R tRR ltRR ltRR	 ltR
+     tRtV tR# )ÚRoceTransportc                óú  € ^ RI Hp ^ RIHpHp	Hp
+     ^ RIHp ^ RIH	p ^ RI
+    Hp ^ RIHpHpHpHp WqW$V3w  V n        V n        V n        V n        V n        VR8X  d   ^ M^pV! VR7      V n        V! V P,                  4      V n        V! V P,                  R	4      V n        VP2                  VP4                  ,          V n        V P9                  ^@VP2                  4      V n        \=        V4      V n        V P,                  PA                  \B        V P>                  4      pV! R
+    R^^R7      p\E        V4       Uu. uF>  pV! V P.                  V! VPF                  V P0                  V P0                  VR7      4      NK@  	  upV n$        \E        V4       Uu. uF  p\J        PL                  ! R%4      NK  	  pp\O        \Q        V4      V PH                   Uu. uF  pVPR                  NK  	  upVR7      pVPU                  RV 2\V        PX                  ! V4      4       \V        PZ                  ! VP]                  R^V,
+               24      4      p\_        V PH                  4       EF3  w  ppV! \B        R7      pV P6                  Vn0        VPc                  V4       V
+    ! V! VR,          4      V P>                  ^@VR7      pV	! \B        ^VR7      Vn2        VPf                  Vn4        VR,          V,          Vn5        VR,          V,          Vn6        ^Vn7        ^Vn8        VPs                  V4       VV,          Vn:        ^Vn;        ^Vn<        ^Vn=        ^Vn>        VP                  V4       \E        R4       F"  pVP                  V Pƒ                  4       4       K$  	  EK6  	  \_        V PH                  4       UUu/ uF  w  ppVPR                  VbK  	  uppV nB        VPU                  RV 2R4       VP]                  R^V,
+               24       RV nC        RV nD        ^ V nE        ^ V nF        V! RV RV P>                   RV RVR,           RVR,           RVR,           RV R VR! R"V^,	           R#V^,           R$24       R# u upi u upi u upi u uppi )&é    N)ÚGIDÚAHAttrÚGlobalRoute)ÚCQ)ÚContext)ÚPD)ÚQPÚQPAttrÚQPCapÚ
+    QPInitAttrÚprefill)Únamei   i   i   )Úmax_send_wrÚmax_recv_wrÚmax_send_sgeÚmax_recv_sge)Úqp_typeÚscqÚrcqÚcap)r)   ÚqpnÚpsnzroce/)Úport_numr)   )ÚdgidÚ
+    sgid_indexÚ	hop_limitÚtraffic_class)rF   Ú	is_globalÚgrrD   rE   é   zroce/ready/Ú1z	roce dev=z gid_index=z gid=ú qpn=z
+     peer_gid=z
+     peer_qpn=z
+     channels=z
+     tclass=0xÚ02xz (DSCP z, ECN Ú)i   )GÚpyverbs.enumsÚenumsÚpyverbs.addrr0   r1   r2   Ú
+    pyverbs.cqr3   Úpyverbs.devicer4   Ú
+    pyverbs.pdr5   Ú
+    pyverbs.qpr6   r7   r8   r9   ÚeÚstoreÚroleÚchannelsÚlogÚctxÚpdÚcqÚIBV_ACCESS_LOCAL_WRITEÚIBV_ACCESS_REMOTE_WRITEÚaccessÚ_mrÚimm_sinkr+   Ú	gid_indexÚ	query_gidr   r   Ú
+    IBV_QPT_RCÚqpsÚrandomÚ	randrangeÚdictÚstrÚqp_numÚsetÚjsonÚdumpsÚloadsÚgetÚ	enumerateÚqp_access_flagsÚto_initÚah_attrÚIBV_MTU_4096Úpath_mtuÚdest_qp_numÚrq_psnÚmax_dest_rd_atomicÚmin_rnr_timerÚto_rtrÚsq_psnÚtimeoutÚ	retry_cntÚ	rnr_retryÚmax_rd_atomicÚto_rtsÚ	post_recvÚ_recv_wrÚ	qpn_to_chÚslab_mrÚremoteÚinflightÚwr_seq)ÚselfrZ   r[   r%   r\   Útclassr]   rY   r0   r1   r2   r3   r4   r5   r6   r7   r8   r9   Úrankr)   rC   Ú_rE   ÚqÚmeÚpeerr   ÚqpÚattrrL   s   &&&&&&&                       r   Ú__init__ÚRoceTransport.__init__;   s¶  € İ!ß9Ñ9İ!İ*İ!ß<Ó<àABÈ4Ğ[^ĞA^Ñ>ˆŒ”
+    ˜DœI t¤}°d´hØ˜IÔ%‰q¨1ˆÙ Ô$ˆŒÙT—X‘X“,ˆŒÙT—X‘X˜tÓ$ˆŒØ×.Ñ.°×1JÑ1JÕJˆŒØŸ™  Q×%=Ñ%=Ó>ˆŒÜ/°Ó4ˆŒØh‰h× Ñ ¤ t§~¡~Ó6ˆá °ÀAĞTUÔVˆä" 8œ_ó.Ù,˜ñ t—w‘w¡
+    °1·<±<ÀTÇWÁWĞRV×RYÑRYĞ_bÔ cÖdÙ,ñ.ˆŒä27¸´/ÓB±/¨QŒv×Ò Ö(±/ˆĞBÜ”c˜#“h°t·x²xÓ$@±x°! Q§X¤X±xÑ$@ÀcÔJˆØ	‰	E˜$˜.¤$§*¢*¨R£.Ô1ÜzŠz˜%Ÿ)™) e¨A°­H¨:Ğ$6Ó7Ó8ˆä˜tŸx™x×(‰EˆAˆrÙ¤4Ô(ˆDØ#'§;¡;ˆDÔ ØJ‰JtÔÙ¡# d¨5¥kÓ"2¸t¿~¹~ĞY[ĞkqÔrˆBÙ!¬4¸1ÀÔDˆDŒLØŸN™NˆDŒMØ# E{¨1~ˆDÔØ˜u+ a.ˆDŒKØ&'ˆDÔ#Ø!#ˆDÔØI‰IdŒOØ˜a&ˆDŒKØˆDŒLØˆDŒNØˆDŒNØ!"ˆDÔØI‰IdŒOÜ˜3–ZØ—‘˜TŸ]™]›_Ö-ô  ñ% )ô( 3<¸D¿H¹HÔ2EÔFÑ2E©$¨!¨Q˜!Ÿ(™( Aš+Ñ2EÒFˆŒØ	‰	K ˜vĞ&¨Ô,Ø	‰	K  D¥˜zĞ*Ô+ØˆŒØˆŒØˆŒØˆŒÙˆi˜u˜K¨¯©Ğ'7°u¸S¸EÀÀrÈ%ÅyÀkĞQ[Ğ\`ĞafÕ\gĞ[hğ iØ˜U} J¨x¨j¸
+    À6È#À,ÈgĞV\Ğ`aÕVaĞUbĞbhĞioĞrsÕisĞhtĞtuğwö 	xùòE.ùâBùÚ$@ùó0 Gs   Ä1AQ(Æ
+    Q-ÇQ2
+    Î#Q7c                ó4   € ^ RI Hp V! V P                  W4      # )r/   )ÚMR)Ú
+    pyverbs.mrr˜   r_   )rŒ   r   rc   r˜   s   &&& r   rd   ÚRoceTransport._mrs   s   € İ!Ù$—'‘'˜6Ó*Ğ*r   c                óˆ   € ^ RI HpHp V! ^V! V P                  P                  ^@V P                  P
+                      4      .R7      # )r/   )ÚSGEÚRecvWR)Únum_sgeÚsg)Ú
+    pyverbs.wrrœ   r   re   ÚbufÚlkey)rŒ   rœ   r   s   &  r   r†   ÚRoceTransport._recv_wrw   s2   € ß*Ù˜a¡S¨¯©×):Ñ):¸BÀÇÁ×@RÑ@RÓ%SĞ$TÔUĞUr   c                ó<  € V P                   e   V P                   P                  4        V P                  W P                  4      V n         RV n        V P
+                      R8X  d^   V P                  P                  RV 2\        P                  ! V P                   P                  V P                   P                  .4      4       \        P                  V,          P                  V P                   P                  4      p\        P                   ! V\        P"                  R7      # )zMAllocate and register the slab. Decode publishes (addr, rkey) for the sender.NÚdecodeúmr/©Údtype)rˆ   Úcloserd   rc   r‰   r[   rZ   ro   rp   rq   r¡   ÚrkeyÚctypesÚc_ubyteÚfrom_addressÚnpÚ
+    frombufferÚuint8)rŒ   Úridr   Úraws   &&& r   Úopen_requestÚRoceTransport.open_request{   sµ   € à<‰<Ò#ØL‰L×ÑÔ Ø—x‘x ¯©Ó4ˆŒØˆŒØ9‰9˜Ô ØJ‰JN‰N˜S  ˜;¬¯
+    ª
+    °D·L±L×4DÑ4DÀdÇlÁl×FWÑFWĞ3XÓ(YÔZÜ~‰~ Õ&×4Ñ4°T·\±\×5EÑ5EÓFˆÜ}Š}˜S¬¯©Ô1Ğ1r   c                óÌ  € ^ RI HpHp V P                  f8   \        P
+                      ! V P                  P                  RV 24      4      V n        V P                  w  rx\        W#V P                  4       Fî  w  ršpV ;P                  ^,          un
+            V! V P                  V P                  P                  ^V! V P                  P                  V
+    ,           W°P                  P                  4      .V P                  P                   R7      pWLn        VP%                  W‡V
+    ,           4       V P&                  V	,          P)                  V4       V ;P*                  ^,          un        Kğ  	  R# )z]RDMA WRITE WITH IMM of slab[offset:offset+nbytes], striped over the channels. imm_data = tag.)rœ   ÚSendWRNr¦   )Úwr_idÚopcoder   rŸ   Ú
+    send_flags)r    rœ   r¶   r‰   rp   rr   rZ   rs   r   r\   r‹   rY   ÚIBV_WR_RDMA_WRITE_WITH_IMMrˆ   r¡   r¢   ÚIBV_SEND_SIGNALEDÚimm_dataÚset_wr_rdmari   Ú	post_sendrŠ   )rŒ   r±   r   r   Útagrœ   r¶   Úraddrrª   Úchr   r   Úwrs   &&&&&        r   ÚpushÚRoceTransport.push†   sò   € ç*Ø;‰;ÒÜŸ*š* T§Z¡Z§^¡^°c¸#¸°KÓ%@ÓAˆDŒKØ—k‘k‰ˆÜ  °·±Ö?‰IˆBAØKŠK˜1ÕKÙ˜dŸk™k°$·&±&×2SÑ2SĞ]^Ù §¡× 0Ñ 0°2Õ 5°q¿,¹,×:KÑ:KÓLĞMØ#'§6¡6×#;Ñ#;ô=ˆBğ ŒKØN‰N˜4¨¥Ô,ØH‰HRL×"Ñ" 2Ô&ØMŠM˜QÕMó @r   Nc           	     óª  € V P                   P                  ^@R7      w  r#VRV  EF*  pVP                  V P                  P                  8w  d3   \        RVP                   RVP                   RVP                   24      hVP                  V P                  P                  8X  d   V ;P                  ^,          un	        K›  VP                  V P                  P                  8X  g   KÂ  V P                  V P                  VP                  ,          ,          P                  V P                  4       4       V'       g   EK  V! VP                  4       EK-  	  V# )é@   )Únum_entriesNzWC error status=z opcode=rO   )r`   ÚpollÚstatusrY   ÚIBV_WC_SUCCESSr$   r¸   rn   ÚIBV_WC_RDMA_WRITErŠ   ÚIBV_WC_RECV_RDMA_WITH_IMMri   r‡   r…   r†   r¼   )rŒ   Úon_recvr   ÚwcsÚwcs   &&   r   Ú_pollÚRoceTransport._poll–   sê   € Ø—‘—‘¨"Ó-‰ˆØbq”'ˆBØy‰y˜DŸF™F×1Ñ1Ô1Ü"Ğ%5°b·i±i°[ÀÈÏÉÈĞSXĞY[×YbÑYbĞXcĞ#dÓeĞeØy‰y˜DŸF™F×4Ñ4Ô4Ø—’ Õ"—Ø—‘˜dŸf™f×>Ñ>Ö>Ø—‘˜Ÿ™¨¯	©	Õ2Õ3×=Ñ=¸d¿m¹m»oÔNß’7Ù˜BŸK™K×(ñ ğ ˆr   c                ó.  € \         P                  ! 4       V,           pV P                  '       dg   V P                  4       '       d   K*  \         P                  ! \
+            4       \         P                  ! 4       V8”  g   K`  \        V P                   R24      hR# )zISender: wait until every WRITE is acknowledged by the responder (RC ACK).z WRITEs unacknowledgedN)ÚtimeÚ	monotonicrŠ   rĞ   ÚsleepÚ
+    POLL_SLEEPÚTimeoutError)rŒ   r€   Údeadlines   && r   ÚflushÚRoceTransport.flush£   s^   € ä—>’>Ó# gÕ-ˆØmmˆmØ—:‘:—<”<Ü—
+    ’
+    œ:Ô&Ü—>’>Ó# hÖ.Ü&¨$¯-©-¨Ğ8NĞ'OÓPĞPñ	 r   c           
+         óz  aaa€ ^ R/ uoooVVV3R lp\         P                  ! 4       V,           pSV8  db   V P                  V4      '       d   K   \         P                  ! \        4       \         P                  ! 4       V8”  g   KV  \        RS RV R24      hRSR\         P                   ! 4       RSR	\        S4      /# )
+    z[Receiver: wait for `expected` WRITE-with-immediate completions. Returns arrival timestamps.Nc                 ó   <€ S^,          oS;'       g    \         P                   ! 4       oSP                  V ^ 4      ^,           SV &   R# )é   N)rÓ   rs   )r¿   ÚfirstÚgotÚper_tags   &€€€r   rÍ   Ú(RoceTransport.wait_data.<locals>.on_recv°   s8   ø€ à1HˆCØ×(Ğ(œTŸYšY›[ˆEØ"Ÿ;™; s¨AÓ.°Õ2ˆGC‹Lr   z	received r   z completionsÚt_firstÚt_lastÚmessagesÚtags)rÓ   rÔ   rĞ   rÕ   rÖ   r×   Úlen)rŒ   Úexpectedr€   rÍ   rØ   rŞ   rß   rà   s   &&&  @@@r   Ú	wait_dataÚRoceTransport.wait_data¬   sš   ú€ à  rĞˆˆUG÷	3ô —>’>Ó# gÕ-ˆØHŒnØ—:‘:˜g×&Ô&Ü—
+    ’
+    œ:Ô&Ü—>’>Ó# hÖ.Ü&¨°3°%°q¸¸
+    À,Ğ'OÓPĞPØ˜5 (¬D¯IªI«K¸ÀSÈ&ÔRUĞV]ÓR^Ğ_Ğ_r   c                ó   € R # ©N© )rŒ   s   &r   Úclose_requestÚRoceTransport.close_request¾   ó   € Ùr   )rc   r\   r`   r^   rY   rf   re   rŠ   r]   r_   r‡   ri   r‰   r[   rˆ   rZ   r‹   rë   ©g     Àr@)Ú__name__Ú
+    __module__Ú__qualname__Ú__firstlineno__Ú	ROCE_DSCPÚECT0Úprintr•   rd   r†   r³   rÃ   rĞ   rÙ   rè   rí   Ú__static_attributes__Ú__classdictcell__©Ú__classdict__s   @r   r-   r-   :   sM   ø‡ € Ø23¸YÈ!½^ÈtÕ<SĞY^ô 6xòp+òVò	2òô ôQô`÷$ğ r   r-   c                   óP   a € ] tR t^Ât o RR]3R ltR tR tR	R ltR	R lt	Rt
+    V tR# )
+    ÚTcpTransportz	10.10.2.2c           	     ó  € WVuV n         V n        V n        R V n        VR8X  dÄ   \        P                  ! 4       pVP                  \        P                  \        P                  ^4       VP                  V\        34       VP                  ^4       VP                  RR4       VP                  4       w  V n        pVP                  4        V! RV^ ,           RV^,           24       MfVP                  R4       \        P                   ! V\        34      V n        V! RV R\         RV P                  P#                  4       ^,           24       V P                  P                  \        P$                  \        P&                  ^4       R # )Nr¥   z	tcp/readyrN   ztcp data connection from Ú:ztcp data connection to z from port )rZ   r[   r]   ÚslabÚsocketÚ
+    setsockoptÚ
+    SOL_SOCKETÚSO_REUSEADDRÚbindÚTCP_DATA_PORTÚlistenro   ÚacceptÚsockr©   rs   Úcreate_connectionÚgetsocknameÚIPPROTO_TCPÚTCP_NODELAY)rŒ   rZ   r[   Ú	bind_addrÚ	peer_addrr]   Úsrvr’   s   &&&&&&  r   r•   ÚTcpTransport.__init__Ã   s&  € Ø*/°sĞ'ˆŒ
+    D”I˜tœxØˆŒ	Ø8ÔÜ—-’-“/ˆCØN‰Nœ6×,Ñ,¬f×.AÑ.AÀ1ÔEØH‰Hi¤Ğ/Ô0ØJ‰JqŒMØI‰Ik 3Ô'Ø!Ÿj™j›l‰OˆDŒItØI‰IŒKÙĞ+¨D°­G¨9°A°d¸1µg°YĞ?Õ@àI‰IkÔ"Ü×0Ò0°)¼]Ğ1KÓLˆDŒIÙĞ)¨)¨°A´m°_ÀKĞPT×PYÑPY×PeÑPeÓPgĞhiÕPjĞOkĞlÔmØ	‰	×ÑœV×/Ñ/´×1CÑ1CÀQÖGr   c                óp   € \         P                  ! V\         P                  R 7      V n        V P                  # )r§   )r®   Úzerosr°   r   )rŒ   r±   r   s   &&&r   r³   ÚTcpTransport.open_requestÕ   s"   € Ü—H’H˜V¬2¯8©8Ô4ˆŒ	Øy‰yĞr   c                ót   € V P                   P                  \        V P                  4      W"V,            4       R # rë   )r	  ÚsendallÚ
+    memoryviewr   )rŒ   r±   r   r   r¿   s   &&&&&r   rÃ   ÚTcpTransport.pushÙ   s&   € Ø	‰	×Ñœ* T§Y¡YÓ/°ÀµĞGÖHr   c                ó   € R # rë   rì   )rŒ   r€   s   &&r   rÙ   ÚTcpTransport.flushÜ   rï   r   c                óœ  € \        V P                  4      ^ RrTpV\        V P                  4      8  d   V P                  P	                  W4R \        \        V P                  4      V,
+              R4      4      pV'       g   \        R4      hT;'       g    \        P                  ! 4       pWF,          pK˜  RVR\        P                  ! 4       R^R^/# )r/   Nzpeer closed during KV transferrâ   rã   rä   rå   i   )r  r   ræ   r	  Ú	recv_intor   ÚConnectionErrorrÓ   )rŒ   Úexpected_unusedr€   Úmvr   rŞ   rß   s   &&&    r   rè   ÚTcpTransport.wait_dataß   s›   € Ü! $§)¡)Ó,¨a°ˆuˆØ”#d—i‘i“.Ô Ø—)‘)×%Ñ% b¨ f¬c´#°d·i±i³.À1Õ2DÀgÓ.NÓOˆCßÜ%Ğ&FÓGĞGØ×(Ğ(œTŸYšY›[ˆEØHŠAØ˜5 (¬D¯IªI«K¸ÀQÈĞPQĞRĞRr   )r]   r[   r   r	  rZ   Nrğ   )rñ   rò   ró   rô   r÷   r•   r³   rÃ   rÙ   rè   rø   rù   rú   s   @r   rı   rı   Â   s/   ø‡ € Ø.9À[ĞV[ô Hò$òIô÷Sò Sr   rı   )Ú__doc__r«   r   rp   rj   r  rÓ   Únumpyr®   rõ   rö   r   r  rÖ   r   r+   r-   rı   rì   r   r   Ú<module>r#     s]   ğñó Û Û Û Û Û ã à€	Ø€Ø€Ø€Ø€
+    ò	ò8÷Eñ E÷P%Só %Sr   
+  app-__pycache__-kvlayout.cpython-314.pyc: |-
+    +
+        !ájD  ã                   óÈ   € R t ^ RIt^ RIHtHt ^ RIt^ RIt^ RIH	t	 R]P                  ^3R]P                  ^3/t] ! R R4      4       tR tR	 tR
+     tR tR tR tR tR tR# )a¿  KV-cache slab layout shared by the prefill and decode workers.
+
+    The Hugging Face cache for layer L holds K and V tensors of shape [1, kv_heads, tokens, head_dim].
+    The slab stores them layer after layer, K then V, each C-contiguous:
+
+        slab = [layer 0: K | V][layer 1: K | V] ... [layer N-1: K | V]
+
+    so one layer is one contiguous byte range (what a layer-wise RDMA WRITE pushes) and the whole slab is one
+    contiguous range (what a bulk RDMA WRITE pushes). The size is analytic:
+
+        bytes = 2 * layers * kv_heads * head_dim * tokens * dtype_bytes
+
+    The slab memory itself is allocated by the transport (an RDMA-registered buffer, or a plain buffer for TCP);
+    this module only gives tensor views over it.
+    N)ÚasdictÚ	dataclass)ÚDynamicCacheÚfp32Úfp16c                   ó’   a € ] tR t^t o ]R 4       t]R 4       t]R 4       t]R 4       t]R 4       t	R t
+    ]R 4       tV 3R ltR	tV tR
+    # )ÚKVSpecc                ó>   € \         V P                  ,          ^ ,          # )é    ©ÚDTYPESÚdtype©Úselfs   &Úapp/kvlayout.pyÚtorch_dtypeÚKVSpec.torch_dtype"   ó   € äd—j‘jÕ! !Õ$Ğ$ó    c                ó>   € \         V P                  ,          ^,          # )é   r   r   s   &r   Ú
+    elem_bytesÚKVSpec.elem_bytes&   r   r   c                ó   € ^V P                   ,          V P                  ,          V P                  ,          V P                  ,          # ©é   )Úkv_headsÚtokensÚhead_dimr   r   s   &r   Úlayer_bytesÚKVSpec.layer_bytes*   s,   € à4—=‘=Õ  4§;¡;Õ.°·±Õ>ÀÇÁÕPĞPr   c                ó<   € V P                   V P                  ,          # ©N)Úlayersr   r   s   &r   Útotal_bytesÚKVSpec.total_bytes.   s   € à{‰{˜T×-Ñ-Õ-Ğ-r   c                ó   € ^V P                   ,          V P                  ,          V P                  ,          V P                  ,          # r   )r#   r   r   r   r   s   &r   Úbytes_per_tokenÚKVSpec.bytes_per_token2   s+   € à4—;‘; §¡Õ.°·±Õ>ÀÇÁÕPĞPr   c                ó   € \        V 4      # r"   )r   r   s   &r   Úto_dictÚKVSpec.to_dict6   s   € Üd‹|Ğr   c                ó   € \        R/ V B # )N© )r   )Úds   &r   Ú	from_dictÚKVSpec.from_dict9   s   € ä‰{˜‰{Ğr   c                óV   <€ V ^8„  d   Qh/ S[ ;R&   S[ ;R&   S[ ;R&   S[ ;R&   S[;R&   # )r   r#   r   r   r   r   )ÚintÚstr)ÚformatÚ__classdict__s   "€r   Ú__annotate__ÚKVSpec.__annotate__   s?   ø‡ ‚ áKñ ñ Mñ ñ Mñ	 ñ
+     Kñ ñ Jò r   r-   N)Ú__name__Ú
+    __module__Ú__qualname__Ú__firstlineno__Úpropertyr   r   r   r$   r'   r*   Ústaticmethodr/   Ú__annotate_func__Ú__static_attributes__Ú__classdictcell__)r5   s   @r   r   r      s   ø‡ € ğ ñ%ó ğ%ğ ñ%ó ğ%ğ ñQó ğQğ ñ.ó ğ.ğ ñQó ğQòğ ñó ğ÷A ƒ r   r   c                 óª   € \        V R R4      ;'       g    V P                  V P                  ,          p\        V P                  V P
+                      W1V4      # )r   N)ÚgetattrÚhidden_sizeÚnum_attention_headsr   Únum_hidden_layersÚnum_key_value_heads)Úcfgr   r   r   s   &&& r   Úspec_from_configrH   >   sE   € Üs˜J¨Ó-×[Ğ[°·±ÀC×D[ÑD[Õ1[€HÜ#×'Ñ'¨×)@Ñ)@À(ĞTYÓZĞZr   c                ó  € W!P                   ,          p\        P                  ! WW1P                   ,            4      pVP                  VP                  4      P                  ^VP                  VP                  VP                  4      # )z]Tensor [2, kv_heads, tokens, head_dim] (index 0 = K, 1 = V) over the slab bytes of one layer.)	r   ÚtorchÚ
+    from_numpyÚviewr   Úreshaper   r   r   )ÚslabÚspecÚlayerÚoffÚraws   &&&  r   Ú
+    layer_viewrS   C   s`   € à
+    ×"Ñ"Õ
+    "€CÜ
+    ×
+    Ò
+    ˜4 C×*:Ñ*:Õ$:Ğ;Ó
+    <€CØ8‰8D×$Ñ$Ó%×-Ñ-¨a°·±ÀÇÁÈTÏ]É]Ó[Ğ[r   c                óš   € \        WV4      pV^ ,          P                  V^ ,          4       V^,          P                  V^ ,          4       R# )zdCopy one layer's K and V ([1, kv_heads, tokens, head_dim]) into the slab, casting to the wire dtype.N)rS   Úcopy_)rN   rO   rP   ÚkÚvÚts   &&&&& r   Ú
+    pack_layerrY   J   s6   € ä4˜uÓ%€AØ€a…D‡JJˆqtÔØ€a…D‡JJˆqtÖr   c           	      óœ   € \        VP                  4       F2  p\        WW2P                  V,          VP                  V,          4       K4  	  R # r"   )Úranger#   rY   Ú	key_cacheÚvalue_cache)rN   rO   ÚcacheÚis   &&& r   Ú
+    pack_cacher`   Q   s5   € Ü4—;‘;ÖˆÜ4˜q§/¡/°!Õ"4°e×6GÑ6GÈÕ6JÖKó  r   c                ó„  € . p\        VP                  4       F‡  p\        WV4      P                  \        P
+                      4      pVP                  V^ ,          P                  ^ 4      P                  4       V^,          P                  ^ 4      P                  4       34       K‰  	  \        P                  ! \        V4      4      # )z=Rebuild a DynamicCache (fp32, the model dtype) from the slab.)r[   r#   rS   ÚtorJ   Úfloat32ÚappendÚ	unsqueezeÚ
+    contiguousr   Úfrom_legacy_cacheÚtuple)rN   rO   r#   r_   rX   s   &&   r   Úunpack_cacheri   V   s‰   € à€FÜ4—;‘;ÖˆÜt 1Ó%×(Ñ(¬¯©Ó7ˆØ‰q˜•t—~‘~ aÓ(×3Ñ3Ó5°q¸µt·~±~ÀaÓ7H×7SÑ7SÓ7UĞVÖWñ  ô ×)Ò)¬%°«-Ó8Ğ8r   c                óN   € \         P                  ! \        V 4      4      R,          # )z-Exact byte integrity of the transferred slab.l   ÿÿ )ÚzlibÚcrc32Ú
+    memoryview)rN   s   &r   Ú
+    slab_crc32rn   _   s   € ä:Š:”j Ó&Ó'¨*Õ4Ğ4r   c                óÄ   € \        \        P                  ! V RVP                   4      P	                  VP
+                      4      P                  4       P                  4       4      # )zVSum of all KV values in float64, the analogue of the training lab's gradient checksum.N)ÚfloatrJ   rK   r$   rL   r   ÚdoubleÚsum)rN   rO   s   &&r   Úslab_checksumrs   d   sI   € ä”×!Ò! $Ğ'8¨×(8Ñ(8Ğ"9Ó:×?Ñ?À×@PÑ@PÓQ×XÑXÓZ×^Ñ^Ó`ÓaĞar   c                 óT   € \        \        R  V P                  4        4       4      4      # )c              3   ó\   "  € T F"  qP                  4       P                  4       x € K$  	  R # 5ir"   )rq   rr   )Ú.0Úps   & r   Ú	<genexpr>Ú#weights_checksum.<locals>.<genexpr>j   s    é € ĞBÑ/A¨!—X‘X“Z—^‘^×%Ğ%Ó/Aùs   ‚*,)rp   rr   Ú
+    parameters)Úmodels   &r   Úweights_checksumr|   i   s!   € Ü”ÑB¨u×/?Ñ/?Ô/AÓBÓBÓCĞCr   )Ú__doc__rk   Údataclassesr   r   ÚnumpyÚnprJ   Útransformersr   rc   Úfloat16r   r   rH   rS   rY   r`   ri   rn   rs   r|   r-   r   r   Ú<module>rƒ      s‚   ğñó ß )ã Û İ %à
+    5—=‘= !Ğ$ f¨u¯}©}¸aĞ.@Ğ	A€ğ ÷ ğ  ó ğ òF[ò
+    \òòLò
+    9ò5ò
+    bô
+    Dr   
+  app-infer.py: |-
+    """Disaggregated LLM inference: prefill on one worker, decode on the other, KV cache over RoCEv2.
+
+      --role prefill     process the prompt, build the real KV cache, push it to the decode worker (rank 0, hosts the store)
+      --role decode      receive the KV cache into registered memory, rebuild it, generate tokens (rank 1)
+      --role colocated   prefill and decode in one process with no network: the reference run
+
+    Greedy decoding, fixed seed and thread count, so the colocated and disaggregated runs must produce identical
+    tokens and an identical KV byte checksum. With --kv-dtype fp16 the colocated run quantizes the cache at the same
+    point where the disaggregated run does, so the comparison stays exact.
+
+    Timeline (wall clock, both workers share the host clock):
+      t_req       the request enters prefill
+      prefill_ms  forward pass over the prompt (includes layer-wise pushes when --mode layerwise)
+      kv_ready    the last KV byte is in decode memory (immediate of the last WRITE received)
+      ttft_ms     max(kv_ready, first token published) - t_req: decode emits token 0 once it holds the whole cache
+    """
+    import argparse
+    import json
+    import os
+    import statistics
+    import sys
+    import time
+    from datetime import timedelta
+
+    import torch
+
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import kvlayout as kv  # noqa: E402
+
+    MODEL_DIR = os.environ.get("MODEL_DIR", "/models/SmolLM2-135M")
+    PROMPT_FILE = os.environ.get("PROMPT_FILE", "/lab/prompts/source.txt")
+
+
+    def log(msg):
+        print(msg, flush=True)
+
+
+    def kvs(**kw):
+        return " ".join(f"{k}={v:.2f}" if isinstance(v, float) else f"{k}={v}" for k, v in kw.items())
+
+
+    def parse():
+        p = argparse.ArgumentParser()
+        p.add_argument("--role", choices=["prefill", "decode", "colocated"], default=os.environ.get("ROLE", "colocated"))
+        p.add_argument("--prompt-tokens", type=int, default=128)
+        p.add_argument("--max-new-tokens", type=int, default=16)
+        p.add_argument("--kv-dtype", choices=["fp32", "fp16"], default="fp32")
+        p.add_argument("--mode", choices=["bulk", "layerwise"], default="bulk")
+        p.add_argument("--channels", type=int, default=2)
+        p.add_argument("--transport", choices=["roce", "tcp"], default="roce")
+        p.add_argument("--requests", type=int, default=1)
+        p.add_argument("--threads", type=int, default=int(os.environ.get("TORCH_THREADS", "4")))
+        p.add_argument("--control", choices=["none", "zero-kv"], default="none",
+                       help="decode only: ignore the received KV and use zeros, to show the KV carries the state")
+        p.add_argument("--seed", type=int, default=0)
+        return p.parse_args()
+
+
+    def load():
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        tok = AutoTokenizer.from_pretrained(MODEL_DIR)
+        model = AutoModelForCausalLM.from_pretrained(MODEL_DIR, torch_dtype=torch.float32).eval()
+        return tok, model
+
+
+    def prompt_ids(tok, n):
+        ids = tok(open(PROMPT_FILE).read(), return_tensors="pt").input_ids
+        if ids.shape[1] < n:
+            raise SystemExit(f"prompt source has only {ids.shape[1]} tokens, need {n}")
+        return ids[:, :n]
+
+
+    def prefill_forward(model, ids, cache, hooks=()):
+        handles = [model.model.layers[i].register_forward_hook(h) for i, h in hooks]
+        try:
+            out = model(input_ids=ids, past_key_values=cache, use_cache=True, num_logits_to_keep=1)
+        finally:
+            for h in handles:
+                h.remove()
+        return int(out.logits[0, -1].argmax())
+
+
+    def decode_loop(model, tok, cache, first, n_new):
+        """Greedy decode. Token 0 is `first` (already known); returns ids and per-token step times in ms."""
+        ids, steps = [first], []
+        cur = first
+        for _ in range(n_new - 1):
+            t = time.perf_counter()
+            out = model(input_ids=torch.tensor([[cur]]), past_key_values=cache, use_cache=True)
+            cur = int(out.logits[0, -1].argmax())
+            steps.append((time.perf_counter() - t) * 1000)
+            ids.append(cur)
+        return ids, steps
+
+
+    def itl_summary(steps):
+        if not steps:
+            return {}
+        s = sorted(steps)
+        return dict(itl_mean_ms=statistics.mean(steps), itl_p50_ms=s[len(s) // 2], itl_max_ms=s[-1])
+
+
+    def run_colocated(args, tok, model):
+        for r in range(args.requests):
+            ids = prompt_ids(tok, args.prompt_tokens)
+            spec = kv.spec_from_config(model.config, ids.shape[1], args.kv_dtype)
+            t_req = time.perf_counter()
+            cache = kv.DynamicCache()
+            first = prefill_forward(model, ids, cache)
+            prefill_ms = (time.perf_counter() - t_req) * 1000
+            # Same pack/unpack path as the handoff, so fp16 quantization is applied identically.
+            slab = torch.zeros(spec.total_bytes, dtype=torch.uint8).numpy()
+            t = time.perf_counter()
+            kv.pack_cache(slab, spec, cache)
+            pack_ms = (time.perf_counter() - t) * 1000
+            t = time.perf_counter()
+            cache = kv.unpack_cache(slab, spec)
+            unpack_ms = (time.perf_counter() - t) * 1000
+            gen, steps = decode_loop(model, tok, cache, first, args.max_new_tokens)
+            log(f"role=colocated req={r} " + kvs(prompt_tokens=spec.tokens, kv_dtype=spec.dtype, kv_bytes=spec.total_bytes,
+                prefill_ms=prefill_ms, pack_ms=pack_ms, unpack_ms=unpack_ms, ttft_ms=prefill_ms,
+                kv_crc32=f"{kv.slab_crc32(slab):08x}", kv_checksum=f"{kv.slab_checksum(slab, spec):.6f}",
+                **itl_summary(steps)))
+            log(f"role=colocated req={r} generated_ids={gen}")
+            log(f"role=colocated req={r} text={tok.decode(gen)!r}")
+
+
+    def make_transport(args, store):
+        if args.transport == "roce":
+            from kv_transport import RoceTransport
+            return RoceTransport(store, args.role, os.environ["ROCE_DEV"], channels=args.channels, log=log)
+        from kv_transport import TcpTransport
+        return TcpTransport(store, args.role, log=log)
+
+
+    def run_prefill(args, tok, model, store, tr):
+        for r in range(args.requests):
+            ids = prompt_ids(tok, args.prompt_tokens)
+            spec = kv.spec_from_config(model.config, ids.shape[1], args.kv_dtype)
+            t_req = time.time()
+            store.set(f"meta/{r}", json.dumps(dict(spec=spec.to_dict(), mode=args.mode, channels=args.channels,
+                                                   transport=args.transport, t_req=t_req)))
+            slab = tr.open_request(r, spec.total_bytes)
+            cache = kv.DynamicCache()
+            pack_ms = 0.0
+            push_t = {}
+
+            def layer_hook(i):
+                def hook(module, inputs, output):
+                    nonlocal pack_ms
+                    t = time.perf_counter()
+                    kv.pack_layer(slab, spec, i, cache.key_cache[i], cache.value_cache[i])
+                    pack_ms += (time.perf_counter() - t) * 1000
+                    tr.push(r, i * spec.layer_bytes, spec.layer_bytes, i)
+                    push_t[i] = time.perf_counter()
+                return hook
+
+            hooks = [(i, layer_hook(i)) for i in range(spec.layers)] if args.mode == "layerwise" else []
+            t_c = time.perf_counter()
+            first = prefill_forward(model, ids, cache, hooks)
+            prefill_ms = (time.perf_counter() - t_c) * 1000
+            store.set(f"first/{r}", str(first))
+            if args.mode == "bulk":
+                t = time.perf_counter()
+                kv.pack_cache(slab, spec, cache)
+                pack_ms = (time.perf_counter() - t) * 1000
+                tr.push(r, 0, spec.total_bytes, 0)
+            t_pushed = time.perf_counter()
+            tr.flush()
+            push_done_ms = (time.perf_counter() - t_c) * 1000
+            crc = kv.slab_crc32(slab)
+            log(f"role=prefill req={r} " + kvs(prompt_tokens=spec.tokens, kv_dtype=spec.dtype, kv_bytes=spec.total_bytes,
+                bytes_per_token=spec.bytes_per_token, mode=args.mode, channels=args.channels, transport=args.transport,
+                prefill_ms=prefill_ms, pack_ms=pack_ms, push_done_ms=push_done_ms,
+                exposed_transfer_ms=push_done_ms - prefill_ms - (pack_ms if args.mode == "bulk" else 0.0),
+                kv_crc32=f"{crc:08x}", kv_checksum=f"{kv.slab_checksum(slab, spec):.6f}", first_token=first))
+            done = json.loads(store.get(f"done/{r}"))
+            log(f"role=prefill req={r} " + kvs(**done))
+
+
+    def run_decode(args, tok, model, store, tr):
+        for r in range(args.requests):
+            meta = json.loads(store.get(f"meta/{r}"))
+            spec = kv.KVSpec.from_dict(meta["spec"])
+            slab = tr.open_request(r, spec.total_bytes)
+            expected = spec.layers * meta["channels"] if meta["mode"] == "layerwise" else meta["channels"]
+            if args.control == "zero-kv":
+                slab[:] = 0
+                first = int(store.get(f"first/{r}"))
+                tr.wait_data(expected)  # still drain the transfer so the sender completes, then discard it
+                slab[:] = 0
+                t_kv = time.time()
+                info = {"t_first": t_kv, "messages": expected}
+            else:
+                info = tr.wait_data(expected)
+                t_kv = info["t_last"]
+                first = int(store.get(f"first/{r}"))
+            t_first = time.time()
+            t_ready = max(t_kv, t_first)
+            crc = kv.slab_crc32(slab)
+            t = time.perf_counter()
+            cache = kv.unpack_cache(slab, spec)
+            unpack_ms = (time.perf_counter() - t) * 1000
+            gen, steps = decode_loop(model, tok, cache, first, args.max_new_tokens)
+            res = dict(prompt_tokens=spec.tokens, kv_dtype=spec.dtype, kv_bytes=spec.total_bytes, mode=meta["mode"],
+                       channels=meta["channels"], transport=meta["transport"], control=args.control,
+                       kv_ready_ms=(t_kv - meta["t_req"]) * 1000,
+                       ttft_ms=(t_ready - meta["t_req"]) * 1000, unpack_ms=unpack_ms,
+                       writes_received=info["messages"], kv_crc32=f"{crc:08x}",
+                       kv_checksum=f"{kv.slab_checksum(slab, spec):.6f}", **itl_summary(steps))
+            log(f"role=decode req={r} " + kvs(**res))
+            log(f"role=decode req={r} generated_ids={gen}")
+            log(f"role=decode req={r} text={tok.decode(gen)!r}")
+            store.set(f"done/{r}", json.dumps(dict(decode_ttft_ms=round(res["ttft_ms"], 2), decode_kv_crc32=res["kv_crc32"],
+                                                   decode_unpack_ms=round(unpack_ms, 2))))
+
+
+    def main():
+        args = parse()
+        torch.set_num_threads(args.threads)
+        torch.manual_seed(args.seed)
+        t = time.perf_counter()
+        tok, model = load()
+        cfg = model.config
+        log(f"role={args.role} model={os.path.basename(MODEL_DIR)} layers={cfg.num_hidden_layers} "
+            f"kv_heads={cfg.num_key_value_heads} head_dim={cfg.hidden_size // cfg.num_attention_heads} "
+            f"load_s={time.perf_counter() - t:.1f} threads={args.threads} "
+            f"weights_checksum={kv.weights_checksum(model):.6f}")
+        if args.role == "colocated":
+            return run_colocated(args, tok, model)
+
+        from torch.distributed import TCPStore
+        store = TCPStore(os.environ.get("MASTER_ADDR", "10.10.1.2"), int(os.environ.get("MASTER_PORT", "29500")),
+                         world_size=2, is_master=args.role == "prefill", timeout=timedelta(seconds=600),
+                         wait_for_workers=True)
+        tr = make_transport(args, store)
+        (run_prefill if args.role == "prefill" else run_decode)(args, tok, model, store, tr)
+
+
+    if __name__ == "__main__":
+        with torch.no_grad():
+            main()
+
+  app-kv_transport.py: |-
+    """KV-cache transports between the prefill worker (rank 0) and the decode worker (rank 1).
+
+    RoceTransport pushes the slab with RDMA WRITE over RC queue pairs (libibverbs, Soft-RoCE `rxe`), the
+    "WRITE (push)" example of Learning Byte 04:
+
+      * decode allocates and registers the destination slab and publishes (addr, rkey) in the TCP store,
+      * prefill pushes byte ranges of its own registered slab with RDMA WRITE WITH IMMEDIATE,
+      * each range is striped across `channels` RC QPs, and every QP has its own UDP source port, so the
+        fabric can ECMP-hash the channels onto different spines,
+      * the immediate (the layer index) tells decode that a range landed; decode counts completions.
+
+    TcpTransport sends the same slab over one TCP connection, for comparison.
+
+    Only bootstrap and metadata use the TCP store, as NCCL and NIXL bootstrap over sockets.
+    """
+    import ctypes
+    import glob
+    import json
+    import random
+    import socket
+    import time
+
+    import numpy as np
+
+    ROCE_DSCP = 26
+    ECT0 = 0b10
+    PORT = 1
+    TCP_DATA_PORT = 29600
+    POLL_SLEEP = 0.0005
+
+
+    def stripes(offset, nbytes, parts):
+        """Split [offset, offset+nbytes) into `parts` contiguous ranges (last ones may be shorter or empty)."""
+        size = -(-nbytes // parts)
+        out = []
+        for i in range(parts):
+            lo = offset + i * size
+            n = max(0, min(size, offset + nbytes - lo))
+            if n:
+                out.append((i, lo, n))
+        return out
+
+
+    def roce_v2_ipv4_gid_index(dev):
+        base = f"/sys/class/infiniband/{dev}/ports/{PORT}"
+        for path in sorted(glob.glob(f"{base}/gids/*"), key=lambda p: int(p.rsplit("/", 1)[1])):
+            idx = int(path.rsplit("/", 1)[1])
+            try:
+                gid = open(path).read().strip()
+                gtype = open(f"{base}/gid_attrs/types/{idx}").read().strip()
+            except OSError:
+                continue
+            if gid.startswith("0000:0000:0000:0000:0000:ffff") and "v2" in gtype:
+                return idx
+        raise RuntimeError(f"no RoCE v2 IPv4 GID on {dev}")
+
+
+    class RoceTransport:
+        def __init__(self, store, role, dev, channels=2, tclass=(ROCE_DSCP << 2) | ECT0, log=print):
+            import pyverbs.enums as e
+            from pyverbs.addr import GID, AHAttr, GlobalRoute
+            from pyverbs.cq import CQ
+            from pyverbs.device import Context
+            from pyverbs.pd import PD
+            from pyverbs.qp import QP, QPAttr, QPCap, QPInitAttr
+
+            self.e, self.store, self.role, self.channels, self.log = e, store, role, channels, log
+            rank = 0 if role == "prefill" else 1
+            self.ctx = Context(name=dev)
+            self.pd = PD(self.ctx)
+            self.cq = CQ(self.ctx, 4096)
+            self.access = e.IBV_ACCESS_LOCAL_WRITE | e.IBV_ACCESS_REMOTE_WRITE
+            self.imm_sink = self._mr(64, e.IBV_ACCESS_LOCAL_WRITE)
+            self.gid_index = roce_v2_ipv4_gid_index(dev)
+            gid = self.ctx.query_gid(PORT, self.gid_index)
+
+            cap = QPCap(max_send_wr=512, max_recv_wr=1024, max_send_sge=1, max_recv_sge=1)
+            self.qps = [QP(self.pd, QPInitAttr(qp_type=e.IBV_QPT_RC, scq=self.cq, rcq=self.cq, cap=cap))
+                        for _ in range(channels)]
+            psn = [random.randrange(1 << 24) for _ in range(channels)]
+            me = dict(gid=str(gid), qpn=[q.qp_num for q in self.qps], psn=psn)
+            store.set(f"roce/{rank}", json.dumps(me))
+            peer = json.loads(store.get(f"roce/{1 - rank}"))
+
+            for i, qp in enumerate(self.qps):
+                attr = QPAttr(port_num=PORT)
+                attr.qp_access_flags = self.access
+                qp.to_init(attr)
+                gr = GlobalRoute(dgid=GID(peer["gid"]), sgid_index=self.gid_index, hop_limit=64, traffic_class=tclass)
+                attr.ah_attr = AHAttr(port_num=PORT, is_global=1, gr=gr)
+                attr.path_mtu = e.IBV_MTU_4096
+                attr.dest_qp_num = peer["qpn"][i]
+                attr.rq_psn = peer["psn"][i]
+                attr.max_dest_rd_atomic = 1
+                attr.min_rnr_timer = 12
+                qp.to_rtr(attr)
+                attr.sq_psn = psn[i]
+                attr.timeout = 14
+                attr.retry_cnt = 7
+                attr.rnr_retry = 7
+                attr.max_rd_atomic = 1
+                qp.to_rts(attr)
+                for _ in range(256):
+                    qp.post_recv(self._recv_wr())
+            self.qpn_to_ch = {q.qp_num: i for i, q in enumerate(self.qps)}
+            store.set(f"roce/ready/{rank}", "1")
+            store.get(f"roce/ready/{1 - rank}")
+            self.slab_mr = None
+            self.remote = None
+            self.inflight = 0
+            self.wr_seq = 0
+            log(f"roce dev={dev} gid_index={self.gid_index} gid={gid} qpn={me['qpn']} peer_gid={peer['gid']} "
+                f"peer_qpn={peer['qpn']} channels={channels} tclass=0x{tclass:02x} (DSCP {tclass >> 2}, ECN {tclass & 3})")
+
+        def _mr(self, nbytes, access):
+            from pyverbs.mr import MR
+            return MR(self.pd, nbytes, access)
+
+        def _recv_wr(self):
+            from pyverbs.wr import SGE, RecvWR
+            return RecvWR(num_sge=1, sg=[SGE(self.imm_sink.buf, 64, self.imm_sink.lkey)])
+
+        def open_request(self, rid, nbytes):
+            """Allocate and register the slab. Decode publishes (addr, rkey) for the sender."""
+            if self.slab_mr is not None:
+                self.slab_mr.close()
+            self.slab_mr = self._mr(nbytes, self.access)
+            self.remote = None
+            if self.role == "decode":
+                self.store.set(f"mr/{rid}", json.dumps([self.slab_mr.buf, self.slab_mr.rkey]))
+            raw = (ctypes.c_ubyte * nbytes).from_address(self.slab_mr.buf)
+            return np.frombuffer(raw, dtype=np.uint8)
+
+        def push(self, rid, offset, nbytes, tag):
+            """RDMA WRITE WITH IMM of slab[offset:offset+nbytes], striped over the channels. imm_data = tag."""
+            from pyverbs.wr import SGE, SendWR
+            if self.remote is None:
+                self.remote = json.loads(self.store.get(f"mr/{rid}"))
+            raddr, rkey = self.remote
+            for ch, lo, n in stripes(offset, nbytes, self.channels):
+                self.wr_seq += 1
+                wr = SendWR(wr_id=self.wr_seq, opcode=self.e.IBV_WR_RDMA_WRITE_WITH_IMM, num_sge=1,
+                            sg=[SGE(self.slab_mr.buf + lo, n, self.slab_mr.lkey)],
+                            send_flags=self.e.IBV_SEND_SIGNALED)
+                wr.imm_data = tag
+                wr.set_wr_rdma(rkey, raddr + lo)
+                self.qps[ch].post_send(wr)
+                self.inflight += 1
+
+        def _poll(self, on_recv=None):
+            n, wcs = self.cq.poll(num_entries=64)
+            for wc in wcs[:n]:
+                if wc.status != self.e.IBV_WC_SUCCESS:
+                    raise RuntimeError(f"WC error status={wc.status} opcode={wc.opcode} qpn={wc.qp_num}")
+                if wc.opcode == self.e.IBV_WC_RDMA_WRITE:
+                    self.inflight -= 1
+                elif wc.opcode == self.e.IBV_WC_RECV_RDMA_WITH_IMM:
+                    self.qps[self.qpn_to_ch[wc.qp_num]].post_recv(self._recv_wr())
+                    if on_recv:
+                        on_recv(wc.imm_data)
+            return n
+
+        def flush(self, timeout=300.0):
+            """Sender: wait until every WRITE is acknowledged by the responder (RC ACK)."""
+            deadline = time.monotonic() + timeout
+            while self.inflight:
+                if not self._poll():
+                    time.sleep(POLL_SLEEP)   # the two workers share one host: do not burn a core while waiting
+                    if time.monotonic() > deadline:
+                        raise TimeoutError(f"{self.inflight} WRITEs unacknowledged")
+
+        def wait_data(self, expected, timeout=300.0):
+            """Receiver: wait for `expected` WRITE-with-immediate completions. Returns arrival timestamps."""
+            got, first, per_tag = 0, None, {}
+
+            def on_recv(tag):
+                nonlocal got, first
+                got += 1
+                first = first or time.time()
+                per_tag[tag] = per_tag.get(tag, 0) + 1
+
+            deadline = time.monotonic() + timeout
+            while got < expected:
+                if not self._poll(on_recv):
+                    time.sleep(POLL_SLEEP)
+                    if time.monotonic() > deadline:
+                        raise TimeoutError(f"received {got}/{expected} completions")
+            return {"t_first": first, "t_last": time.time(), "messages": got, "tags": len(per_tag)}
+
+        def close_request(self):
+            pass
+
+
+    class TcpTransport:
+        def __init__(self, store, role, bind_addr="10.10.2.2", peer_addr="10.10.2.2", log=print):
+            self.store, self.role, self.log = store, role, log
+            self.slab = None
+            if role == "decode":
+                srv = socket.socket()
+                srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                srv.bind((bind_addr, TCP_DATA_PORT))
+                srv.listen(1)
+                store.set("tcp/ready", "1")
+                self.sock, peer = srv.accept()
+                srv.close()
+                log(f"tcp data connection from {peer[0]}:{peer[1]}")
+            else:
+                store.get("tcp/ready")
+                self.sock = socket.create_connection((peer_addr, TCP_DATA_PORT))
+                log(f"tcp data connection to {peer_addr}:{TCP_DATA_PORT} from port {self.sock.getsockname()[1]}")
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
+        def open_request(self, rid, nbytes):
+            self.slab = np.zeros(nbytes, dtype=np.uint8)
+            return self.slab
+
+        def push(self, rid, offset, nbytes, tag):
+            self.sock.sendall(memoryview(self.slab)[offset:offset + nbytes])
+
+        def flush(self, timeout=300.0):
+            pass
+
+        def wait_data(self, expected_unused, timeout=300.0):
+            mv, n, first = memoryview(self.slab), 0, None
+            while n < len(self.slab):
+                got = self.sock.recv_into(mv[n:], min(len(self.slab) - n, 1 << 20))
+                if not got:
+                    raise ConnectionError("peer closed during KV transfer")
+                first = first or time.time()
+                n += got
+            return {"t_first": first, "t_last": time.time(), "messages": 1, "tags": 1}
+
+  app-kvlayout.py: |-
+    """KV-cache slab layout shared by the prefill and decode workers.
+
+    The Hugging Face cache for layer L holds K and V tensors of shape [1, kv_heads, tokens, head_dim].
+    The slab stores them layer after layer, K then V, each C-contiguous:
+
+        slab = [layer 0: K | V][layer 1: K | V] ... [layer N-1: K | V]
+
+    so one layer is one contiguous byte range (what a layer-wise RDMA WRITE pushes) and the whole slab is one
+    contiguous range (what a bulk RDMA WRITE pushes). The size is analytic:
+
+        bytes = 2 * layers * kv_heads * head_dim * tokens * dtype_bytes
+
+    The slab memory itself is allocated by the transport (an RDMA-registered buffer, or a plain buffer for TCP);
+    this module only gives tensor views over it.
+    """
+    import zlib
+    from dataclasses import asdict, dataclass
+
+    import numpy as np
+    import torch
+    from transformers import DynamicCache
+
+    DTYPES = {"fp32": (torch.float32, 4), "fp16": (torch.float16, 2)}
+
+
+    @dataclass
+    class KVSpec:
+        layers: int
+        kv_heads: int
+        head_dim: int
+        tokens: int
+        dtype: str  # "fp32" | "fp16"
+
+        @property
+        def torch_dtype(self):
+            return DTYPES[self.dtype][0]
+
+        @property
+        def elem_bytes(self):
+            return DTYPES[self.dtype][1]
+
+        @property
+        def layer_bytes(self):
+            return 2 * self.kv_heads * self.tokens * self.head_dim * self.elem_bytes
+
+        @property
+        def total_bytes(self):
+            return self.layers * self.layer_bytes
+
+        @property
+        def bytes_per_token(self):
+            return 2 * self.layers * self.kv_heads * self.head_dim * self.elem_bytes
+
+        def to_dict(self):
+            return asdict(self)
+
+        @staticmethod
+        def from_dict(d):
+            return KVSpec(**d)
+
+
+    def spec_from_config(cfg, tokens, dtype):
+        head_dim = getattr(cfg, "head_dim", None) or cfg.hidden_size // cfg.num_attention_heads
+        return KVSpec(cfg.num_hidden_layers, cfg.num_key_value_heads, head_dim, tokens, dtype)
+
+
+    def layer_view(slab, spec, layer):
+        """Tensor [2, kv_heads, tokens, head_dim] (index 0 = K, 1 = V) over the slab bytes of one layer."""
+        off = layer * spec.layer_bytes
+        raw = torch.from_numpy(slab[off:off + spec.layer_bytes])
+        return raw.view(spec.torch_dtype).reshape(2, spec.kv_heads, spec.tokens, spec.head_dim)
+
+
+    def pack_layer(slab, spec, layer, k, v):
+        """Copy one layer's K and V ([1, kv_heads, tokens, head_dim]) into the slab, casting to the wire dtype."""
+        t = layer_view(slab, spec, layer)
+        t[0].copy_(k[0])
+        t[1].copy_(v[0])
+
+
+    def pack_cache(slab, spec, cache):
+        for i in range(spec.layers):
+            pack_layer(slab, spec, i, cache.key_cache[i], cache.value_cache[i])
+
+
+    def unpack_cache(slab, spec):
+        """Rebuild a DynamicCache (fp32, the model dtype) from the slab."""
+        layers = []
+        for i in range(spec.layers):
+            t = layer_view(slab, spec, i).to(torch.float32)
+            layers.append((t[0].unsqueeze(0).contiguous(), t[1].unsqueeze(0).contiguous()))
+        return DynamicCache.from_legacy_cache(tuple(layers))
+
+
+    def slab_crc32(slab):
+        """Exact byte integrity of the transferred slab."""
+        return zlib.crc32(memoryview(slab)) & 0xFFFFFFFF
+
+
+    def slab_checksum(slab, spec):
+        """Sum of all KV values in float64, the analogue of the training lab's gradient checksum."""
+        return float(torch.from_numpy(slab[:spec.total_bytes]).view(spec.torch_dtype).double().sum())
+
+
+    def weights_checksum(model):
+        return float(sum(p.double().sum() for p in model.parameters()))
+
+  prompts-source.txt: |-
+    A data center network for machine learning is built differently from one for web traffic. A web request is a short conversation between a client and a server, and thousands of independent flows share every link. A backend network for AI is dominated by a few very large flows that run between accelerators for the whole life of a job. Each flow carries tensors, and the tensors are big. When a flow is slow, the accelerator at the other end sits idle, and an idle accelerator is the most expensive thing in the building.
+
+    The standard topology for this fabric is a Clos network. Servers connect to leaf switches. Every leaf connects to every spine. Traffic between two servers on different leaves crosses exactly one spine, so every path has the same length, and the number of equal cost paths is the number of spines. Routing uses a simple underlay, often eBGP with one autonomous system per leaf and a shared autonomous system for the spines. Each switch installs several next hops for a remote prefix and spreads flows over them. This is equal cost multipath, or ECMP.
+
+    ECMP chooses a path by hashing header fields, usually the source and destination addresses, the protocol, and the transport ports. All the packets of one flow hash to the same path, which keeps them in order. This works well when there are many flows, because the law of large numbers evens out the load. It works badly when there are few flows. Two large flows have a fair chance of landing on the same spine while another spine is idle. The hash has low entropy, and the fabric looks congested even though total capacity is plentiful.
+
+    RDMA over Converged Ethernet, version two, carries remote direct memory access inside UDP packets. The destination port is 4791. The source port is chosen by the sender and is often derived from the queue pair number, so it provides the entropy that ECMP needs. Behind the UDP header sits the InfiniBand base transport header, which names the destination queue pair and a packet sequence number. For an RDMA write, the first packet also carries an extended header with the remote virtual address, the remote key, and the total length of the message. The payload follows, and an invariant checksum closes the packet.
+
+    A reliable connection queue pair expects packets in order. If one packet is lost, the receiver notices a gap in the sequence numbers and asks the sender to start again from the gap. This is go back N retransmission. It is simple to implement in hardware, but it makes loss expensive, because one lost packet causes everything after it to be sent twice. Production RoCE fabrics therefore try hard not to lose packets. They mark packets with explicit congestion notification before queues overflow, they let the receiver ask the sender to slow down with congestion notification packets, and some also use priority flow control to pause a link before a buffer fills.
+
+    Large language model inference has two phases that stress a machine in different ways. The first phase, called prefill, reads the whole prompt at once. Every prompt token is processed in parallel, which keeps the matrix units busy, so prefill is limited by compute. While it runs, each attention layer computes a key vector and a value vector for every prompt token and stores them. That store is the key value cache. The second phase, called decode, produces the answer one token at a time. Each step reads the entire cache and the model weights to produce a single new token, and it appends one new key and value to the cache. Decode is limited by memory bandwidth and by the latency of each step.
+
+    Because the two phases want different things, operators have started to run them on different machines. A prefill pool is sized for compute and a decode pool is sized for memory bandwidth, and each can be scaled independently. A long prompt arriving on the prefill pool no longer stalls the streaming answers of other users on the decode pool. The price is that the cache created by prefill must now travel to the machine that will run decode. The cache can be hundreds of megabytes for a long prompt on a large model, and the user is waiting, so the transfer sits directly on the path to the first token.
+
+    The transfer is usually a push or a pull between registered memory regions. The decode side allocates and registers a buffer, and tells the prefill side its address and remote key. The prefill side then issues RDMA writes into that buffer, and the final write carries an immediate value that tells the decode side the data is complete. The switches in between know nothing about attention or tensors. They see UDP packets with a DSCP value, they hash the headers, they queue the packets, and they forward them. The quality of the answer cannot depend on the network, but the time to the first token certainly can.
+
+    Operators measure the cost of this handoff in several ways. The first is the volume of the cache, which grows linearly with the number of prompt tokens, the number of layers, the number of key value heads, the size of each head, and the number of bytes used for each stored number. Grouped query attention reduces the number of key value heads, and storing the cache in a narrower number format halves its size again. The second is the time spent waiting for the network, which depends on the bandwidth that one flow can actually obtain, not on the bandwidth printed on the port. A flow that is hashed onto a busy spine, or that suffers loss and must retransmit, sees only a fraction of the line rate. The third is how much of the transfer can be hidden behind computation. If the prefill machine sends each layer as soon as that layer is finished, the network works while the processors continue with the next layer, and only the tail of the transfer is exposed to the user.
+
+    None of these costs can be seen from inside the model. They appear in the counters of the switches, in the retransmission statistics of the network cards, and in the timestamps of the packets. That is why a lab that moves a real cache between two real processes across a real routed fabric is useful. It lets an engineer change one variable at a time, such as the prompt length, the number of queue pairs, the sending rate, or the delay between the leaves, and watch what happens to the first token. It also gives a way to check, with a byte checksum and a comparison of the generated tokens, that the answer produced after the handoff is exactly the answer that would have been produced without it.
+
+    Finally, there is the matter of failure. Links go down, optics fail, and switches reboot. A reliable connection will time out and retransmit, and as long as another path exists the transfer will complete, but the request that was in flight will see a stall. A good test of any fabric designed for inference is to remove a spine link in the middle of a transfer and measure how long the user waits, and whether the tokens that follow are still correct.
+
+---
+apiVersion: clabernetes.containerlab.dev/v1alpha1
+kind: Topology
+metadata:
+  name: ai-inference
+  namespace: ai-inference
+spec:
+  deployment:
+    filesFromConfigMap:
+        decode:
+          - filePath: app/__pycache__/infer.cpython-314.pyc
+            configMapName: ai-inference-decode-files
+            configMapPath: app-__pycache__-infer.cpython-314.pyc
+            mode: 
+          - filePath: app/__pycache__/kv_transport.cpython-314.pyc
+            configMapName: ai-inference-decode-files
+            configMapPath: app-__pycache__-kv_transport.cpython-314.pyc
+            mode: 
+          - filePath: app/__pycache__/kvlayout.cpython-314.pyc
+            configMapName: ai-inference-decode-files
+            configMapPath: app-__pycache__-kvlayout.cpython-314.pyc
+            mode: 
+          - filePath: app/infer.py
+            configMapName: ai-inference-decode-files
+            configMapPath: app-infer.py
+            mode: 
+          - filePath: app/kv_transport.py
+            configMapName: ai-inference-decode-files
+            configMapPath: app-kv_transport.py
+            mode: 
+          - filePath: app/kvlayout.py
+            configMapName: ai-inference-decode-files
+            configMapPath: app-kvlayout.py
+            mode: 
+          - filePath: prompts/source.txt
+            configMapName: ai-inference-decode-files
+            configMapPath: prompts-source.txt
+            mode: 
+        leaf1:
+          - filePath: configs/leaf1.cli
+            configMapName: ai-inference-leaf1-startup-config
+            configMapPath: startup-config
+            mode: read
+        leaf2:
+          - filePath: configs/leaf2.cli
+            configMapName: ai-inference-leaf2-startup-config
+            configMapPath: startup-config
+            mode: read
+        prefill:
+          - filePath: app/__pycache__/infer.cpython-314.pyc
+            configMapName: ai-inference-prefill-files
+            configMapPath: app-__pycache__-infer.cpython-314.pyc
+            mode: 
+          - filePath: app/__pycache__/kv_transport.cpython-314.pyc
+            configMapName: ai-inference-prefill-files
+            configMapPath: app-__pycache__-kv_transport.cpython-314.pyc
+            mode: 
+          - filePath: app/__pycache__/kvlayout.cpython-314.pyc
+            configMapName: ai-inference-prefill-files
+            configMapPath: app-__pycache__-kvlayout.cpython-314.pyc
+            mode: 
+          - filePath: app/infer.py
+            configMapName: ai-inference-prefill-files
+            configMapPath: app-infer.py
+            mode: 
+          - filePath: app/kv_transport.py
+            configMapName: ai-inference-prefill-files
+            configMapPath: app-kv_transport.py
+            mode: 
+          - filePath: app/kvlayout.py
+            configMapName: ai-inference-prefill-files
+            configMapPath: app-kvlayout.py
+            mode: 
+          - filePath: prompts/source.txt
+            configMapName: ai-inference-prefill-files
+            configMapPath: prompts-source.txt
+            mode: 
+        spine1:
+          - filePath: configs/spine1.cli
+            configMapName: ai-inference-spine1-startup-config
+            configMapPath: startup-config
+            mode: read
+        spine2:
+          - filePath: configs/spine2.cli
+            configMapName: ai-inference-spine2-startup-config
+            configMapPath: startup-config
+            mode: read
+  naming: non-prefixed
+  definition:
+    containerlab: |-
+          # Disaggregated AI inference packet lab: a prefill worker and a decode worker on a minimal SR Linux Clos.
+          #
+          #        spine1 10.0.0.1 (AS65100)          spine2 10.0.0.2 (AS65100)
+          #          e1-1 |       \ e1-2           e1-1 /       | e1-2
+          #               |        \__________________/         |
+          #               |         /                \          |
+          #          e1-1 |        / e1-2        e1-1 \         | e1-2
+          #        leaf1 10.0.1.1 (AS65001)          leaf2 10.0.1.2 (AS65002)
+          #               | e1-10  gw 10.10.1.1             | e1-10  gw 10.10.2.1
+          #        prefill 10.10.1.2/24 (rxe_p)      decode 10.10.2.2/24 (rxe_d)
+          #
+          # eBGP underlay over /31s, 2-way ECMP leaf -> spine. The KV cache built by a real small LLM on the
+          # prefill worker moves to the decode worker as RoCEv2 RDMA WRITE (UDP/4791, DSCP 26, ECT(0)) from
+          # Soft-RoCE (rxe) on each worker's eth1. Model weights are bind-mounted read-only at /models
+          # (bash scripts/fetch-model.sh once on the host).
+          # Host needs: sudo modprobe rdma_rxe ib_uverbs sch_netem.
+          # Switch type ixr-h5-64o (7220 IXR-H5-64O, TH5) stands in for TH6: the 26.7.2 image knows
+          # ixr-h6 (7220 IXR-H6-64) but shuts it down after boot without a license. With a license file,
+          # set type: ixr-h6 and add license: <file> on the four switches. SR Linux here is a virtual
+          # forwarding model, not Tomahawk silicon.
+          name: ai-inference
+
+          mgmt:
+            network: ai-inference-mgmt
+            ipv4-subnet: 172.30.41.0/24
+
+          topology:
+            kinds:
+              nokia_srlinux:
+                image: ghcr.io/nokia/srlinux:26.7.2
+              linux:
+                image: python:3.11-slim
+
+            nodes:
+              spine1:
+                kind: nokia_srlinux
+                type: ixr-h5-64o
+                startup-config: configs/spine1.cli
+                labels:
+                  graph-level: 1
+                  graph-icon: spine
+              spine2:
+                kind: nokia_srlinux
+                type: ixr-h5-64o
+                startup-config: configs/spine2.cli
+                labels:
+                  graph-level: 1
+                  graph-icon: spine
+              leaf1:
+                kind: nokia_srlinux
+                type: ixr-h5-64o
+                startup-config: configs/leaf1.cli
+                labels:
+                  graph-level: 2
+                  graph-icon: leaf
+              leaf2:
+                kind: nokia_srlinux
+                type: ixr-h5-64o
+                startup-config: configs/leaf2.cli
+                labels:
+                  graph-level: 2
+                  graph-icon: leaf
+              prefill:
+                kind: linux
+                cmd: sleep infinity
+                binds:
+                  - ./app:/lab/app:ro
+                  - ./prompts:/lab/prompts:ro
+                labels:
+                  graph-level: 3
+                  graph-icon: host
+              decode:
+                kind: linux
+                cmd: sleep infinity
+                binds:
+                  - ./app:/lab/app:ro
+                  - ./prompts:/lab/prompts:ro
+                labels:
+                  graph-level: 3
+                  graph-icon: host
+
+            links:
+              - endpoints: ["spine1:e1-1", "leaf1:e1-1"]
+              - endpoints: ["spine2:e1-1", "leaf1:e1-2"]
+              - endpoints: ["spine1:e1-2", "leaf2:e1-1"]
+              - endpoints: ["spine2:e1-2", "leaf2:e1-2"]
+              - endpoints: ["leaf1:e1-10", "prefill:eth1"]
+              - endpoints: ["leaf2:e1-10", "decode:eth1"]

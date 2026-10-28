@@ -1,9 +1,9 @@
 ## colocated reference (128 prompt tokens, 32 new tokens)
-role=colocated req=0 prompt_tokens=128 kv_dtype=fp32 kv_bytes=5898240 prefill_ms=661.30 pack_ms=3.42 unpack_ms=1.04 ttft_ms=661.30 kv_crc32=e9051a60 kv_checksum=-24789.118727 itl_mean_ms=62.67 itl_p50_ms=54.95 itl_max_ms=179.53
+role=colocated req=0 prompt_tokens=128 kv_dtype=fp32 kv_bytes=5898240 prefill_ms=1164.23 pack_ms=5.12 unpack_ms=1.98 ttft_ms=1164.23 kv_crc32=e9051a60 kv_checksum=-24789.118727 itl_mean_ms=152.00 itl_p50_ms=156.05 itl_max_ms=228.83
 ## disaggregated over RoCEv2 (capture on prefill eth1)
-role=decode req=0 prompt_tokens=128 kv_dtype=fp32 kv_bytes=5898240 mode=bulk channels=2 transport=roce control=none kv_ready_ms=1264.00 ttft_ms=1268.32 unpack_ms=4.19 writes_received=2 kv_crc32=e9051a60 kv_checksum=-24789.118727 itl_mean_ms=60.75 itl_p50_ms=55.66 itl_max_ms=127.59
-role=prefill req=0 prompt_tokens=128 kv_dtype=fp32 kv_bytes=5898240 bytes_per_token=46080 mode=bulk channels=2 transport=roce prefill_ms=789.15 pack_ms=3.91 push_done_ms=1262.24 exposed_transfer_ms=469.18 kv_crc32=e9051a60 kv_checksum=-24789.118727 first_token=253
-role=prefill req=0 decode_ttft_ms=1268.32 decode_kv_crc32=e9051a60 decode_unpack_ms=4.19
+role=decode req=0 prompt_tokens=128 kv_dtype=fp32 kv_bytes=5898240 mode=bulk channels=2 transport=roce control=none kv_ready_ms=2052.15 ttft_ms=2066.01 unpack_ms=2.95 writes_received=2 kv_crc32=e9051a60 kv_checksum=-24789.118727 itl_mean_ms=184.52 itl_p50_ms=162.26 itl_max_ms=632.45
+role=prefill req=0 prompt_tokens=128 kv_dtype=fp32 kv_bytes=5898240 bytes_per_token=46080 mode=bulk channels=2 transport=roce prefill_ms=1389.31 pack_ms=4.48 push_done_ms=2049.32 exposed_transfer_ms=655.54 kv_crc32=e9051a60 kv_checksum=-24789.118727 first_token=253
+role=prefill req=0 decode_ttft_ms=2066.01 decode_kv_crc32=e9051a60 decode_unpack_ms=2.95
 ## negative control: decode ignores the received KV
 role=decode req=0 generated_ids=[253, 17626, 47506, 35724, 288, 325, 7146, 1639, 15078, 684, 15078, 15078, 15078, 15078, 1391, 335, 2018, 563, 34130, 15078, 15078, 18976, 15078, 15078, 15078, 15078, 1
 ## verdict
