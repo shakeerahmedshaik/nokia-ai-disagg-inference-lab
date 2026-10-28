@@ -1,23 +1,23 @@
-17:03:19.088 KV transfer #1 started
-17:03:23.603 KV transfer #1 ended
-17:03:42.084 KV transfer #2 started
-17:03:46.432 KV transfer #2 ended
-17:03:49.255 uplink bytes during transfer #2: ethernet-1/1=23950356 ethernet-1/2=25331654 -> victim ethernet-1/2
-17:04:02.226 KV transfer #3 started
-17:04:03.742 leaf1 ethernet-1/2 admin-state disable (sent)
-10.10.2.0/24         bgp          0        170     >        192.168.11.1(route:local)
-192.168.11.0/31      local        0        0       >        192.168.11.0(ethernet-1/1.0)
-17:04:20.347 leaf1 ethernet-1/2 admin-state enable (sent)
+18:03:44.875 KV transfer #1 started
+18:03:49.396 KV transfer #1 ended
+18:04:00.168 KV transfer #2 started
+18:04:04.804 KV transfer #2 ended
+18:04:07.290 uplink bytes during transfer #2: ethernet-1/1=47900879 ethernet-1/2=159 -> victim ethernet-1/1
+18:04:15.011 KV transfer #3 started
+18:04:16.541 leaf1 ethernet-1/1 admin-state disable (sent)
+10.10.2.0/24         bgp          0        170     >        192.168.12.1(route:local)
+192.168.12.0/31      local        0        0       >        192.168.12.0(ethernet-1/2.0)
+18:04:32.991 leaf1 ethernet-1/1 admin-state enable (sent)
 == waiting for ECMP to return to 2 next-hops
-17:05:02.784 2 next-hops again after 12 s of polling
+18:05:14.144 2 next-hops again after 20 s of polling
 10.10.2.0/24         bgp          0        170     >        192.168.11.1(route:local)                                                                                                               
                                                             192.168.12.1(route:local)
 == per request (decode: kv_ready_ms, ttft_ms | prefill: prefill_ms, exposed_transfer_ms) | kv_crc32
-req=0 kv_ready_ms=18354.71 ttft_ms=18359.73 prefill_ms=13913.42 exposed_transfer_ms=4279.09 kv_crc32=db7b0412
-req=1 kv_ready_ms=18893.91 ttft_ms=18903.62 prefill_ms=14590.04 exposed_transfer_ms=3950.53 kv_crc32=db7b0412
-req=2 kv_ready_ms=19254.76 ttft_ms=19260.52 prefill_ms=12784.92 exposed_transfer_ms=6371.92 kv_crc32=db7b0412
-req=3 kv_ready_ms=15598.59 ttft_ms=15605.67 prefill_ms=11608.12 exposed_transfer_ms=3883.17 kv_crc32=db7b0412
-req=4 kv_ready_ms=16003.45 ttft_ms=16007.53 prefill_ms=11974.31 exposed_transfer_ms=3876.82 kv_crc32=db7b0412
+req=0 kv_ready_ms=12988.78 ttft_ms=12995.99 prefill_ms=8791.50 exposed_transfer_ms=4091.33 kv_crc32=db7b0412
+req=1 kv_ready_ms=13065.72 ttft_ms=13073.85 prefill_ms=9117.62 exposed_transfer_ms=3832.48 kv_crc32=db7b0412
+req=2 kv_ready_ms=13041.43 ttft_ms=15428.28 prefill_ms=8951.47 exposed_transfer_ms=3976.27 kv_crc32=db7b0412
+req=3 kv_ready_ms=12818.84 ttft_ms=12838.23 prefill_ms=8803.33 exposed_transfer_ms=3898.59 kv_crc32=db7b0412
+req=4 kv_ready_ms=12383.95 ttft_ms=12392.60 prefill_ms=8433.52 exposed_transfer_ms=3832.38 kv_crc32=db7b0412
 == distinct generated_ids across requests (1 = every request produced identical tokens)
 1
 == distinct kv_crc32 across requests (1 = KV bytes identical every time)

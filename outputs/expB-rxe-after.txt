@@ -1,4 +1,4 @@
-prefill rxe_p sent_pkts 975770 rcvd_pkts 22655 duplicate_request 0 out_of_seq_request 0 rcvd_seq_err 4767 retry_exceeded_err 0 completer_retry_err 5510 
-decode rxe_d sent_pkts 24456 rcvd_pkts 696611 duplicate_request 10210 out_of_seq_request 5011 rcvd_seq_err 0 retry_exceeded_err 0 completer_retry_err 0 
-leaf1 ethernet-1/10 in-discarded-packets=236143 in-error-packets=59 
-leaf2 ethernet-1/10 in-discarded-packets=6 in-error-packets=0 
+prefill rxe_p sent_pkts 1821283 rcvd_pkts 41822 duplicate_request 0 out_of_seq_request 0 rcvd_seq_err 9368 retry_exceeded_err 0 completer_retry_err 10735 
+decode rxe_d sent_pkts 47442 rcvd_pkts 1322663 duplicate_request 20772 out_of_seq_request 9769 rcvd_seq_err 0 retry_exceeded_err 0 completer_retry_err 0 
+leaf1 ethernet-1/10 in-discarded-packets=417672 in-error-packets=364 
+leaf2 ethernet-1/10 in-discarded-packets=7 in-error-packets=0 

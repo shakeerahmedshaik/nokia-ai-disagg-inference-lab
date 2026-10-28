@@ -1,0 +1,24 @@
+18:18:15.131 KV transfer #1 started
+18:18:19.114 KV transfer #1 ended
+18:18:26.436 KV transfer #2 started
+18:18:30.552 KV transfer #2 ended
+18:18:33.041 uplink bytes during transfer #2: ethernet-1/1=23950778 ethernet-1/2=23950259 -> victim ethernet-1/1
+18:18:40.549 KV transfer #3 started
+18:18:42.063 leaf1 ethernet-1/1 admin-state disable (sent)
+10.10.2.0/24         bgp          0        170     >        192.168.12.1(route:local)
+192.168.12.0/31      local        0        0       >        192.168.12.0(ethernet-1/2.0)
+18:18:58.259 leaf1 ethernet-1/1 admin-state enable (sent)
+== waiting for ECMP to return to 2 next-hops
+18:19:40.799 2 next-hops again after 30 s of polling
+10.10.2.0/24         bgp          0        170     >        192.168.11.1(route:local)                                                                                                               
+                                                            192.168.12.1(route:local)
+== per request (decode: kv_ready_ms, ttft_ms | prefill: prefill_ms, exposed_transfer_ms) | kv_crc32
+req=0 kv_ready_ms=10894.98 ttft_ms=10899.51 prefill_ms=6893.54 exposed_transfer_ms=3921.86 kv_crc32=db7b0412
+req=1 kv_ready_ms=10508.93 ttft_ms=10516.58 prefill_ms=6592.52 exposed_transfer_ms=3827.73 kv_crc32=db7b0412
+req=2 kv_ready_ms=12756.90 ttft_ms=12765.44 prefill_ms=8582.11 exposed_transfer_ms=4063.62 kv_crc32=db7b0412
+req=3 kv_ready_ms=11592.50 ttft_ms=11596.46 prefill_ms=7662.11 exposed_transfer_ms=3826.77 kv_crc32=db7b0412
+req=4 kv_ready_ms=10381.46 ttft_ms=10385.21 prefill_ms=6451.20 exposed_transfer_ms=3826.23 kv_crc32=db7b0412
+== distinct generated_ids across requests (1 = every request produced identical tokens)
+1
+== distinct kv_crc32 across requests (1 = KV bytes identical every time)
+1

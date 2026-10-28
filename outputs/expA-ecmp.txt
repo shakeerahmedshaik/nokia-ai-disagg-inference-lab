@@ -1,5 +1,5 @@
 spine  port          towards   in_MB(from leaf)  out_MB(to leaf)
-spine1 ethernet-1/1  leaf1                  0.8              0.0
-spine1 ethernet-1/2  leaf2                  0.0              0.8
-spine2 ethernet-1/1  leaf1                  0.9              0.0
-spine2 ethernet-1/2  leaf2                  0.0              0.9
+spine1 ethernet-1/1  leaf1                  1.0              0.0
+spine1 ethernet-1/2  leaf2                  0.0              1.0
+spine2 ethernet-1/1  leaf1                  1.4              0.0
+spine2 ethernet-1/2  leaf2                  0.0              1.4

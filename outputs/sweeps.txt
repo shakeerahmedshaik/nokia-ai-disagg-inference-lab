@@ -1,34 +1,34 @@
 ## prompt length (fp32, 2 channels, bulk)
-tokens=32        kv_MB=1.5    wire_MB=3.4     wire/kv=2.30  prefill_ms=291     exposed_xfer_ms=61      ttft_ms=360     spine1/spine2_MB=2.0/0.0     leaf_discards=326    tokens_and_kv_match=yes
-tokens=128       kv_MB=5.9    wire_MB=24.4    wire/kv=4.14  prefill_ms=2902    exposed_xfer_ms=805     ttft_ms=3737    spine1/spine2_MB=13.2/0.0    leaf_discards=2421   tokens_and_kv_match=yes
-tokens=512       kv_MB=23.6   wire_MB=82.5    wire/kv=3.50  prefill_ms=5284    exposed_xfer_ms=2431    ttft_ms=7773    spine1/spine2_MB=26.1/24.7   leaf_discards=7004   tokens_and_kv_match=yes
-tokens=1024      kv_MB=47.2   wire_MB=143.0   wire/kv=3.03  prefill_ms=9812    exposed_xfer_ms=3471    ttft_ms=13377   spine1/spine2_MB=49.3/47.6   leaf_discards=9938   tokens_and_kv_match=yes
+tokens=32        kv_MB=1.5    wire_MB=4.3     wire/kv=2.90  prefill_ms=526     exposed_xfer_ms=171     ttft_ms=709     spine1/spine2_MB=1.5/1.5     leaf_discards=284    tokens_and_kv_match=yes
+tokens=128       kv_MB=5.9    wire_MB=11.5    wire/kv=1.95  prefill_ms=1155    exposed_xfer_ms=381     ttft_ms=1575    spine1/spine2_MB=4.4/4.8     leaf_discards=444    tokens_and_kv_match=yes
+tokens=512       kv_MB=23.6   wire_MB=52.5    wire/kv=2.23  prefill_ms=3795    exposed_xfer_ms=1278    ttft_ms=5124    spine1/spine2_MB=43.6/0.0    leaf_discards=1962   tokens_and_kv_match=yes
+tokens=1024      kv_MB=47.2   wire_MB=74.5    wire/kv=1.58  prefill_ms=6304    exposed_xfer_ms=1643    ttft_ms=8017    spine1/spine2_MB=33.3/33.4   leaf_discards=1360   tokens_and_kv_match=yes
 ## KV dtype (tokens=512)
-dtype=fp32       kv_MB=23.6   wire_MB=70.7    wire/kv=3.00  prefill_ms=4797    exposed_xfer_ms=1891    ttft_ms=6752    spine1/spine2_MB=24.9/25.9   leaf_discards=4052   tokens_and_kv_match=yes
-dtype=fp16       kv_MB=11.8   wire_MB=31.2    wire/kv=2.64  prefill_ms=4518    exposed_xfer_ms=748     ttft_ms=5310    spine1/spine2_MB=21.9/0.0    leaf_discards=1905   tokens_and_kv_match=yes
+dtype=fp32       kv_MB=23.6   wire_MB=44.1    wire/kv=1.87  prefill_ms=2789    exposed_xfer_ms=1033    ttft_ms=3873    spine1/spine2_MB=16.5/19.8   leaf_discards=1757   tokens_and_kv_match=yes
+dtype=fp16       kv_MB=11.8   wire_MB=21.3    wire/kv=1.81  prefill_ms=2702    exposed_xfer_ms=492     ttft_ms=3220    spine1/spine2_MB=10.0/8.6    leaf_discards=656    tokens_and_kv_match=yes
 ## RC QPs (channels) (tokens=512)
-channels=1       kv_MB=23.6   wire_MB=68.1    wire/kv=2.89  prefill_ms=4438    exposed_xfer_ms=2342    ttft_ms=6829    spine1/spine2_MB=48.7/0.0    leaf_discards=4124   tokens_and_kv_match=yes
-channels=2       kv_MB=23.6   wire_MB=66.7    wire/kv=2.83  prefill_ms=4766    exposed_xfer_ms=1684    ttft_ms=6508    spine1/spine2_MB=49.5/0.0    leaf_discards=3599   tokens_and_kv_match=yes
-channels=4       kv_MB=23.6   wire_MB=95.1    wire/kv=4.03  prefill_ms=4916    exposed_xfer_ms=2054    ttft_ms=7036    spine1/spine2_MB=45.1/12.1   leaf_discards=8105   tokens_and_kv_match=yes
+channels=1       kv_MB=23.6   wire_MB=38.2    wire/kv=1.62  prefill_ms=2638    exposed_xfer_ms=923     ttft_ms=3603    spine1/spine2_MB=34.2/0.0    leaf_discards=807    tokens_and_kv_match=yes
+channels=2       kv_MB=23.6   wire_MB=49.4    wire/kv=2.09  prefill_ms=2805    exposed_xfer_ms=1056    ttft_ms=3903    spine1/spine2_MB=0.0/42.4    leaf_discards=1472   tokens_and_kv_match=yes
+channels=4       kv_MB=23.6   wire_MB=75.4    wire/kv=3.20  prefill_ms=2765    exposed_xfer_ms=1379    ttft_ms=4191    spine1/spine2_MB=51.5/0.0    leaf_discards=3770   tokens_and_kv_match=yes
 ## bulk vs layerwise push (tokens=512)
-mode=bulk#1      kv_MB=23.6   wire_MB=68.4    wire/kv=2.90  prefill_ms=4868    exposed_xfer_ms=1797    ttft_ms=6757    spine1/spine2_MB=26.7/23.4   leaf_discards=3881   tokens_and_kv_match=yes
-mode=layerwise#1 kv_MB=23.6   wire_MB=74.2    wire/kv=3.14  prefill_ms=3740    exposed_xfer_ms=373     ttft_ms=4158    spine1/spine2_MB=23.8/25.3   leaf_discards=5366   tokens_and_kv_match=yes
-mode=bulk#2      kv_MB=23.6   wire_MB=67.4    wire/kv=2.86  prefill_ms=3342    exposed_xfer_ms=1671    ttft_ms=5073    spine1/spine2_MB=25.2/25.2   leaf_discards=3349   tokens_and_kv_match=yes
-mode=layerwise#2 kv_MB=23.6   wire_MB=88.3    wire/kv=3.74  prefill_ms=6915    exposed_xfer_ms=375     ttft_ms=7346    spine1/spine2_MB=0.0/47.7    leaf_discards=8978   tokens_and_kv_match=yes
-mode=bulk#3      kv_MB=23.6   wire_MB=72.5    wire/kv=3.07  prefill_ms=4655    exposed_xfer_ms=1857    ttft_ms=6571    spine1/spine2_MB=23.8/23.5   leaf_discards=5440   tokens_and_kv_match=yes
-mode=layerwise#3 kv_MB=23.6   wire_MB=88.0    wire/kv=3.73  prefill_ms=6269    exposed_xfer_ms=708     ttft_ms=7018    spine1/spine2_MB=25.2/24.4   leaf_discards=8683   tokens_and_kv_match=yes
+mode=bulk#1      kv_MB=23.6   wire_MB=38.4    wire/kv=1.63  prefill_ms=2902    exposed_xfer_ms=676     ttft_ms=3623    spine1/spine2_MB=35.2/0.0    leaf_discards=715    tokens_and_kv_match=yes
+mode=layerwise#1 kv_MB=23.6   wire_MB=80.7    wire/kv=3.42  prefill_ms=4595    exposed_xfer_ms=194     ttft_ms=4848    spine1/spine2_MB=0.0/51.7    leaf_discards=6550   tokens_and_kv_match=yes
+mode=bulk#2      kv_MB=23.6   wire_MB=55.5    wire/kv=2.35  prefill_ms=3785    exposed_xfer_ms=1400    ttft_ms=5247    spine1/spine2_MB=20.7/21.0   leaf_discards=3123   tokens_and_kv_match=yes
+mode=layerwise#2 kv_MB=23.6   wire_MB=70.1    wire/kv=2.97  prefill_ms=2979    exposed_xfer_ms=432     ttft_ms=3451    spine1/spine2_MB=0.0/53.1    leaf_discards=3602   tokens_and_kv_match=yes
+mode=bulk#3      kv_MB=23.6   wire_MB=43.6    wire/kv=1.85  prefill_ms=2770    exposed_xfer_ms=787     ttft_ms=3608    spine1/spine2_MB=38.3/0.0    leaf_discards=1084   tokens_and_kv_match=yes
+mode=layerwise#3 kv_MB=23.6   wire_MB=60.0    wire/kv=2.54  prefill_ms=3151    exposed_xfer_ms=245     ttft_ms=3435    spine1/spine2_MB=23.4/22.0   leaf_discards=3332   tokens_and_kv_match=yes
 ## sender pacing on both workers (tokens=512)
-pace=off         kv_MB=23.6   wire_MB=69.4    wire/kv=2.94  prefill_ms=4376    exposed_xfer_ms=1722    ttft_ms=6165    spine1/spine2_MB=46.1/0.0    leaf_discards=5141   tokens_and_kv_match=yes
-pace=60mbit      kv_MB=23.6   wire_MB=23.9    wire/kv=1.01  prefill_ms=4634    exposed_xfer_ms=3187    ttft_ms=7888    spine1/spine2_MB=0.0/24.0    leaf_discards=0      tokens_and_kv_match=yes
-pace=100mbit     kv_MB=23.6   wire_MB=23.9    wire/kv=1.01  prefill_ms=4836    exposed_xfer_ms=1918    ttft_ms=6809    spine1/spine2_MB=12.0/12.0   leaf_discards=0      tokens_and_kv_match=yes
-pace=150mbit     kv_MB=23.6   wire_MB=24.5    wire/kv=1.04  prefill_ms=4971    exposed_xfer_ms=1312    ttft_ms=6340    spine1/spine2_MB=12.3/12.3   leaf_discards=0      tokens_and_kv_match=yes
-pace=200mbit     kv_MB=23.6   wire_MB=26.5    wire/kv=1.12  prefill_ms=4591    exposed_xfer_ms=1064    ttft_ms=5723    spine1/spine2_MB=13.5/12.9   leaf_discards=19     tokens_and_kv_match=yes
-pace=300mbit     kv_MB=23.6   wire_MB=33.7    wire/kv=1.43  prefill_ms=4446    exposed_xfer_ms=1009    ttft_ms=5515    spine1/spine2_MB=32.3/0.0    leaf_discards=97     tokens_and_kv_match=yes
-pace=400mbit     kv_MB=23.6   wire_MB=32.0    wire/kv=1.36  prefill_ms=3428    exposed_xfer_ms=665     ttft_ms=4137    spine1/spine2_MB=15.2/16.4   leaf_discards=10     tokens_and_kv_match=yes
+pace=off         kv_MB=23.6   wire_MB=38.8    wire/kv=1.64  prefill_ms=2703    exposed_xfer_ms=895     ttft_ms=3645    spine1/spine2_MB=18.4/16.2   leaf_discards=962    tokens_and_kv_match=yes
+pace=60mbit      kv_MB=23.6   wire_MB=23.9    wire/kv=1.01  prefill_ms=2811    exposed_xfer_ms=3184    ttft_ms=6040    spine1/spine2_MB=12.0/12.0   leaf_discards=0      tokens_and_kv_match=yes
+pace=100mbit     kv_MB=23.6   wire_MB=24.5    wire/kv=1.04  prefill_ms=2678    exposed_xfer_ms=2036    ttft_ms=4768    spine1/spine2_MB=0.0/24.5    leaf_discards=0      tokens_and_kv_match=yes
+pace=150mbit     kv_MB=23.6   wire_MB=25.0    wire/kv=1.06  prefill_ms=3690    exposed_xfer_ms=1433    ttft_ms=5194    spine1/spine2_MB=0.0/25.0    leaf_discards=0      tokens_and_kv_match=yes
+pace=200mbit     kv_MB=23.6   wire_MB=25.1    wire/kv=1.06  prefill_ms=3685    exposed_xfer_ms=1025    ttft_ms=4762    spine1/spine2_MB=12.9/12.3   leaf_discards=2      tokens_and_kv_match=yes
+pace=300mbit     kv_MB=23.6   wire_MB=24.3    wire/kv=1.03  prefill_ms=2721    exposed_xfer_ms=653     ttft_ms=3414    spine1/spine2_MB=24.3/0.0    leaf_discards=0      tokens_and_kv_match=yes
+pace=400mbit     kv_MB=23.6   wire_MB=28.1    wire/kv=1.19  prefill_ms=2754    exposed_xfer_ms=593     ttft_ms=3384    spine1/spine2_MB=27.8/0.0    leaf_discards=31     tokens_and_kv_match=yes
 ## netem delay on decode eth1 (tokens=512)
-delay=0ms        kv_MB=23.6   wire_MB=56.9    wire/kv=2.41  prefill_ms=3194    exposed_xfer_ms=1346    ttft_ms=4587    spine1/spine2_MB=20.1/24.5   leaf_discards=2063   tokens_and_kv_match=yes
-delay=5ms        kv_MB=23.6   wire_MB=61.3    wire/kv=2.60  prefill_ms=4687    exposed_xfer_ms=1426    ttft_ms=6167    spine1/spine2_MB=23.6/23.0   leaf_discards=3019   tokens_and_kv_match=yes
-delay=20ms       kv_MB=23.6   wire_MB=76.1    wire/kv=3.23  prefill_ms=4815    exposed_xfer_ms=2856    ttft_ms=7749    spine1/spine2_MB=0.0/51.1    leaf_discards=5261   tokens_and_kv_match=yes
+delay=0ms        kv_MB=23.6   wire_MB=56.8    wire/kv=2.41  prefill_ms=4082    exposed_xfer_ms=1352    ttft_ms=5482    spine1/spine2_MB=46.4/0.0    leaf_discards=2458   tokens_and_kv_match=yes
+delay=5ms        kv_MB=23.6   wire_MB=47.4    wire/kv=2.01  prefill_ms=2695    exposed_xfer_ms=1125    ttft_ms=3866    spine1/spine2_MB=0.0/40.6    leaf_discards=1528   tokens_and_kv_match=yes
+delay=20ms       kv_MB=23.6   wire_MB=41.5    wire/kv=1.76  prefill_ms=2956    exposed_xfer_ms=1660    ttft_ms=4697    spine1/spine2_MB=34.7/0.0    leaf_discards=1503   tokens_and_kv_match=yes
 ## RoCEv2 RDMA WRITE vs TCP (tokens=512)
-transport=roce   kv_MB=23.6   wire_MB=72.2    wire/kv=3.06  prefill_ms=5334    exposed_xfer_ms=1977    ttft_ms=7467    spine1/spine2_MB=21.8/24.8   leaf_discards=5936   tokens_and_kv_match=yes
-transport=tcp    kv_MB=23.6   wire_MB=24.2    wire/kv=1.03  prefill_ms=3310    exposed_xfer_ms=410     ttft_ms=3765    spine1/spine2_MB=23.8/0.0    leaf_discards=0      tokens_and_kv_match=yes
+transport=roce   kv_MB=23.6   wire_MB=37.5    wire/kv=1.59  prefill_ms=2817    exposed_xfer_ms=832     ttft_ms=3693    spine1/spine2_MB=33.1/0.0    leaf_discards=882    tokens_and_kv_match=yes
+transport=tcp    kv_MB=23.6   wire_MB=24.1    wire/kv=1.02  prefill_ms=2728    exposed_xfer_ms=272     ttft_ms=3066    spine1/spine2_MB=0.0/23.8    leaf_discards=20     tokens_and_kv_match=yes

@@ -85,12 +85,12 @@
   <p class="sec">A real small LLM (SmolLM2-135M) runs prefill on one CPU container and decode on another. The KV cache it
     builds crosses a 2-leaf / 2-spine SR Linux Clos as real RoCEv2 (Soft-RoCE <code>rxe</code>, RDMA WRITE with immediate),
     and decode continues from it. Numbers come from the captures and counters in <code>outputs/</code> of this
-    repository. The host is shared and noisy, so read the ratios and byte counts, not single millisecond values.</p>
+    repository. Timings are from a quiet host (the one other heavy container was paused); single runs still vary by tens of percent, so the charts show medians or every run.</p>
   <div class="stats">
     <div class="stat"><div class="v">46,080 B</div><div class="l">KV per token, fp32 (23,040 B in fp16)</div></div>
     <div class="stat"><div class="v">23.6 MB</div><div class="l">KV for a 512-token prompt, fp32</div></div>
-    <div class="stat warn"><div class="v">3.5x</div><div class="l">wire bytes / KV bytes at 128 tokens, unpaced</div></div>
-    <div class="stat ok"><div class="v">1.01x</div><div class="l">same ratio with sender pacing at 100 Mbit/s</div></div>
+    <div class="stat warn"><div class="v">2.0x</div><div class="l">wire bytes / KV bytes at 128 tokens, unpaced</div></div>
+    <div class="stat ok"><div class="v">1.03x</div><div class="l">wire / KV at 512 tokens, paced at 300 Mbit/s (1.64x unpaced)</div></div>
     <div class="stat ok"><div class="v">identical</div><div class="l">tokens and KV crc32 vs colocated</div></div>
   </div>
 
@@ -105,8 +105,8 @@
       <div>
         <svg id="topo" class="chart" viewBox="0 0 720 340"></svg>
         <div class="legend">
-          <span><svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="var(--qpa)" stroke-width="2.5"/></svg>QP channel 0 (sport 60325)</span>
-          <span><svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="var(--qpb)" stroke-width="2.5"/></svg>QP channel 1 (sport 60656)</span>
+          <span><svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="var(--qpa)" stroke-width="2.5"/></svg>QP channel 0 (sport 55183)</span>
+          <span><svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="var(--qpb)" stroke-width="2.5"/></svg>QP channel 1 (sport 55830)</span>
           <span><svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="var(--text2)" stroke-width="2.5" stroke-dasharray="4 3"/></svg>RC ACK / NAK</span>
           <span><svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="var(--text3)" stroke-width="2.5" stroke-dasharray="4 3"/></svg>TCP store</span>
         </div>
@@ -163,7 +163,7 @@
       <div>
         <h3>Ideal vs captured RoCEv2 frames by opcode</h3>
         <div class="framed" id="t-opcodes"></div>
-        <p class="cap">Ideal = 2 stripes x (1 First + 178 Middle + 1 Last). 463 data frames against 360 ideal; the surplus is go-back-N retransmission.</p>
+        <p class="cap">Ideal = 2 stripes x (1 First + 178 Middle + 1 Last). 662 data frames against 360 ideal; the surplus is go-back-N retransmission.</p>
       </div>
       <div>
         <h3>UDP conversations (one per QP and direction)</h3>
@@ -192,18 +192,18 @@
       <div><h3>128-token prompt: prefill + exposed transfer (ms)</h3><svg id="ch-c128" class="chart"></svg></div>
       <div><h3>512-token prompt: prefill + exposed transfer (ms)</h3><svg id="ch-c512" class="chart"></svg></div>
     </div>
-    <p class="cap">Source: <code>outputs/expC-ttft-128.txt</code> and <code>expC-ttft-512.txt</code>, medians of 3 runs per configuration. x-axis: configuration.
-      The prefill segment is noisy on this shared host: the same computation took 4.3 to 7.0 s at 512 tokens across rows. The exposed segment is the reliable one. Each segment is its own median, so the bar total (printed above the bar) is not the median TTFT; the median TTFTs are 1,004 / 1,508 / 1,901 / 1,019 ms at 128 tokens and 5,451 / 7,567 / 4,928 / 7,058 ms at 512 tokens.</p>
-    <div class="callout info"><b>What the numbers support</b>Bulk push adds about 0.5 s (128 tokens) and 1.9 s (512 tokens) of exposed transfer to the
-      first token. Layer-by-layer push cuts the exposed part to 6 to 226 ms, but Soft-RoCE does its protocol work on the same CPU as the forward pass,
-      so total TTFT does not reliably improve here. Splitting prefill and decode is not automatically faster; it pays when the handoff is small compared with the work it separates.</div>
+    <p class="cap">Source: <code>outputs/expC-ttft-128.txt</code> and <code>expC-ttft-512.txt</code>, medians of 5 runs per configuration. x-axis: configuration.
+      Runs vary by tens of percent (colocated 512-token TTFT ranged from 2,701 to 3,956 ms); on a loaded host the same prefill took 4.3 to 7.0 s, which is why the other heavy container was paused. Each segment is its own median, so the bar total (printed above the bar) is not the median TTFT; the median TTFTs are 698 / 1,076 / 1,415 / 812 ms at 128 tokens and 2,773 / 4,427 / 3,394 / 3,225 ms at 512 tokens.</p>
+    <div class="callout info"><b>What the numbers support</b>Colocated had the lowest TTFT in 4 of 5 runs at 512 tokens. Bulk push was the slowest in 5 of 5 runs: it adds about 0.3 s (128 tokens, +54 %) and 1.35 s (512 tokens, +60 %) of exposed transfer.
+      Layer-by-layer push hides most of it (exposed 6 to 575 ms) and, with pacing at 300 Mbit/s, is the best disaggregated setup: +16 % over colocated at both lengths. Unpaced layerwise at 128 tokens is worse than bulk because
+      Soft-RoCE retransmission work runs on the same CPU as the forward pass. Splitting prefill and decode is not automatically faster; it pays when the handoff is small compared with the work it separates.</div>
   </section>
 
   <section>
     <h2>Where the bytes and time go</h2>
     <div class="grid2">
       <div><h3>KV bytes vs wire bytes by prompt length (MB)</h3><svg id="ch-bytes" class="chart"></svg>
-        <p class="cap">x-axis: prompt length. fp32, 2 channels, bulk, unpaced. Wire/KV is 2.3x, 4.1x, 3.5x and 3.0x. Source: <code>outputs/sweeps.txt</code>.</p></div>
+        <p class="cap">x-axis: prompt length. fp32, 2 channels, bulk, unpaced. Wire/KV is 2.9x, 1.95x, 2.2x and 1.6x. Source: <code>outputs/sweeps.txt</code>.</p></div>
       <div><h3>Exposed transfer time by prompt length (ms)</h3><svg id="ch-exposed" class="chart"></svg>
         <p class="cap">Same rows. The transfer grows with the KV, as 46,080 B per token predicts. Source: <code>outputs/sweeps.txt</code>.</p></div>
     </div>
@@ -211,12 +211,12 @@
       <div>
         <h3>KV dtype: fp32 vs fp16 at 512 tokens</h3>
         <div class="framed" id="t-dtype"></div>
-        <p class="cap">fp16 halves the KV and cuts the exposed transfer 2.5x. Tokens still match the colocated fp16 reference.</p>
+        <p class="cap">fp16 halves the KV and cuts the exposed transfer 2.1x. Tokens still match the colocated fp16 reference.</p>
       </div>
       <div>
         <h3>RC QPs (channels) at 512 tokens</h3>
         <div class="framed" id="t-chan"></div>
-        <p class="cap">More QPs did not help: the software datapath is the bottleneck, and with 1 or 2 channels every flow hashed to spine1. ECMP use depends on the hash, not the QP count.</p>
+        <p class="cap">More QPs made it worse (wire/kv 1.62 to 3.20): the software datapath is the bottleneck, and in all three rows every flow used a single spine. ECMP spread depends on the hash, not the QP count.</p>
       </div>
     </div>
   </section>
@@ -227,8 +227,8 @@
       <div><h3>Exposed transfer per run (ms)</h3><svg id="ch-mode-x" class="chart"></svg></div>
       <div><h3>Time to first token per run (ms)</h3><svg id="ch-mode-t" class="chart"></svg></div>
     </div>
-    <p class="cap">Source: <code>outputs/sweeps.txt</code>, 512 tokens, fp32, unpaced. Layerwise cuts the exposed transfer by 62 to 79 % in every run, but its TTFT has both the best
-      (4,158 ms) and the worst (7,346 ms) run, because posting WRITEs and Soft-RoCE's receive work share the CPU with the forward pass.</p>
+    <p class="cap">Source: <code>outputs/sweeps.txt</code>, 512 tokens, fp32, unpaced. Layerwise cuts the exposed transfer by 69 to 71 % in every run and has the better TTFT in 2 of 3 runs; in run 1 its prefill spiked to 4,595 ms (Soft-RoCE work shares the CPU with the forward pass).
+      It also puts more bytes on the wire (wire/kv 2.5 to 3.4 against 1.6 to 2.4 for bulk).</p>
   </section>
 
   <section>
@@ -238,12 +238,12 @@
       <div><h3>Wire bytes / KV bytes</h3><svg id="ch-wirekv" class="chart"></svg></div>
     </div>
     <p class="cap">Source: <code>outputs/sweeps.txt</code>, 512 tokens, 23,592,960 B of KV, <code>tc tbf</code> on both workers. x-axis: pacing rate (Mbit/s), "off" is unpaced.
-      Leaf ingress discards in the same order: 5,141 / 0 / 0 / 0 / 19 / 97 / 10. At or below 150 Mbit/s the fabric drops nothing and the transfer takes the time the pacer allows;
-      unpaced it takes about 1.7 s and the wire carries the KV 2.9 times. Rate control is what DCQCN or PFC would provide on a real fabric; here there is no ECN, so pacing is manual.</p>
+      Leaf ingress discards in the same order: 962 / 0 / 0 / 0 / 2 / 0 / 31. From 60 to 300 Mbit/s the fabric drops nothing and the transfer takes close to the time the pacer allows (within 15 %). Pacing at 300 Mbit/s beats unpaced:
+      653 ms against 895 ms exposed transfer, and 24.3 MB against 38.8 MB on the wire. At 400 Mbit/s loss starts again, so the knee is between 300 and 400 Mbit/s. Rate control is what DCQCN or PFC would provide on a real fabric; here there is no ECN, so pacing is manual.</p>
     <div class="grid2" style="margin-top:16px">
       <div><h3>Netem delay on decode</h3><div class="framed" id="t-delay"></div></div>
       <div><h3>RoCEv2 RDMA WRITE vs TCP, same bytes, same fabric</h3><div class="framed" id="t-tcp"></div>
-        <p class="cap">TCP's congestion control beat unpaced Soft-RoCE by about 5x. This describes Soft-RoCE on a software datapath without PFC or DCQCN, not RoCE on a lossless fabric.</p></div>
+        <p class="cap">TCP's congestion control finished about 3x faster than unpaced Soft-RoCE. This describes Soft-RoCE on a software datapath without PFC or DCQCN, not RoCE on a lossless fabric.</p></div>
     </div>
   </section>
 
@@ -253,10 +253,10 @@
     <h2>A spine link fails mid-transfer</h2>
     <div class="grid-fail">
       <div>
-        <h3>Exposed transfer per request (ms), 1024-token prompts</h3>
+        <h3>Exposed transfer per request (ms), 1024-token prompts, three runs</h3>
         <svg id="ch-fail" class="chart"></svg>
-        <p class="cap">Source: <code>outputs/failover.txt</code>, paced at 100 Mbit/s. leaf1 ethernet-1/2 disabled 1.5 s into the third transfer, re-enabled 16.6 s later.
-          All five requests produced identical tokens and KV crc32 <code>db7b0412</code>.</p>
+        <p class="cap">Source: <code>outputs/failover.txt</code>, <code>failover-repeat2.txt</code>, <code>failover-repeat3.txt</code>, paced at 100 Mbit/s. leaf1 ethernet-1/1 disabled 1.5 s into the third transfer (req 2), re-enabled about 16.5 s later.
+          All 15 requests produced identical tokens and KV crc32 <code>db7b0412</code>.</p>
       </div>
       <div class="framed" id="t-fail"></div>
     </div>
@@ -265,12 +265,12 @@
   <section>
     <h2>What a faster fabric would change (arithmetic, not measured)</h2>
     <div class="framed" id="t-speed"></div>
-    <p class="cap">Line-rate time for the handoff alone, no protocol overhead. The measured fabric moves the KV at about 0.1 to 0.5 Gbit/s, which is why the transfer is visible here at all.</p>
+    <p class="cap">Line-rate time for the handoff alone, no protocol overhead. The measured fabric moves the KV at about 0.2 to 0.7 Gbit/s, which is why the transfer is visible here at all.</p>
   </section>
 
   <div class="callout"><b>What this lab does not test</b>No GPUs, vLLM, NIXL, UCX, GPUDirect or NVLink. Soft-RoCE on the SR Linux software datapath, so absolute speeds are not
     representative. No ECN, DCQCN or PFC (zero CE marks). One request at a time, so no incast or multi-tenant interference. A 135M model with 3 KV heads gives a small KV.
-    The host is shared and noisy. The clabernetes manifest was generated but not deployed.</div>
+    A shared host: single runs vary by tens of percent. The clabernetes manifest was generated but not deployed.</div>
 
   <hr>
 
@@ -344,9 +344,9 @@ ip.dsfield.dscp == 26 &amp;&amp; ip.dsfield.ecn == 3   # CE marks (none here)</p
   const S1R = [...S1F].reverse(), S2R = [...S2F].reverse();
 
   const PHASES = [
-    { t: "1. Bootstrap", w: "42 TCP frames · 3,611 B", flows: [[S1R, "tcp"], [S2R, "tcp"]],
+    { t: "1. Bootstrap", w: "43 TCP frames · 3,673 B", flows: [[S1R, "tcp"], [S2R, "tcp"]],
       s: "Prefill hosts a TCPStore at 10.10.1.2:29500. Decode connects and the two exchange the request spec (layers, kv_heads, head_dim, tokens, dtype, mode). This is also how decode later hands back the address of its KV buffer. The only TCP in the whole request.",
-      f: [["Conversation", "10.10.2.2:54852 → 10.10.1.2:29500"],
+      f: [["Conversation", "10.10.2.2:43552 → 10.10.1.2:29500"],
           ["Published", "spec, MR address and rkey, QPN and PSN per channel, GID (::ffff:10.10.x.2, index 1), first token, done"],
           ["Path", "One spine, chosen by the 5-tuple hash"]] },
     { t: "2. Register the slab", w: "0 RoCEv2 frames", flows: [],
@@ -356,21 +356,21 @@ ip.dsfield.dscp == 26 &amp;&amp; ip.dsfield.ecn == 3   # CE marks (none here)</p
           ["RTR address vector", "GlobalRoute dgid = peer GID, traffic_class 0x6a (DSCP 26, ECT(0)). Path MTU 4096"]] },
     { t: "3. Prefill", w: "0 frames", flows: [],
       s: "Prefill runs the forward pass over the prompt on CPU, builds the real KV tensors, samples token 0, and packs the cache into the slab layout. In layerwise mode a forward hook pushes each layer as soon as it is computed, so the network overlaps the compute.",
-      f: [["Time at 32 tokens", "prefill 420 ms, pack 2.3 ms"],
+      f: [["Time at 32 tokens", "prefill 218 ms, pack 1.3 ms"],
           ["KV dtype", "fp32 (46,080 B per token) or fp16 (23,040 B per token)"],
           ["Model", "SmolLM2-135M: 30 layers, 3 KV heads, head dim 64"]] },
-    { t: "4. KV push", w: "463 data frames · 1.93 MB", flows: [[S1F, "qpA"], [S2F, "qpB"]],
+    { t: "4. KV push", w: "662 data frames · 2.75 MB", flows: [[S1F, "qpA"], [S2F, "qpB"]],
       s: "The slab is split in two halves, one per RC QP. Each half is one RDMA WRITE of 737,280 B, segmented into 180 frames of 4096 B; the last frame carries an immediate. The two QPs have different UDP source ports and hash onto different spines.",
-      f: [["First frames (t=4.304)", "sport 60325 → destQP 0xa6, PSN 15325410, RETH dmalen 737280; sport 60656 → destQP 0xa7, PSN 12199266"],
-          ["Frames", "463 captured against an ideal 360, so 103 were resent"],
-          ["ECMP", "spine1 0.8 MB, spine2 0.9 MB"]] },
-    { t: "5. ACK and loss", w: "7 ACK frames", flows: [[S1R, "ack"], [S2R, "ack"]],
-      s: "The responder returns RC ACKs (opcode 17, 62 B). With no PFC and no congestion feedback, a leaf ingress drop leaves a PSN gap, the responder NAKs, and the sender resends everything from the gap (go-back-N). At larger transfers this multiplies the wire bytes (3.5x the KV at 128 tokens).",
-      f: [["Experiment B, 128 tokens", "leaf1 ethernet-1/10 in-discarded +1,876 · rxe_p rcvd_seq_err +32 · rxe_d duplicate_request +47"],
+      f: [["First frames (t=0.691)", "sport 55183 → destQP 0x143, PSN 5687232, RETH dmalen 737280; sport 55830 → destQP 0x144, PSN 12930152"],
+          ["Frames", "662 captured against an ideal 360, so 302 were resent"],
+          ["ECMP", "spine1 1.0 MB, spine2 1.4 MB"]] },
+    { t: "5. ACK and loss", w: "10 ACK frames", flows: [[S1R, "ack"], [S2R, "ack"]],
+      s: "The responder returns RC ACKs (opcode 17, 62 B). With no PFC and no congestion feedback, a leaf ingress drop leaves a PSN gap, the responder NAKs, and the sender resends everything from the gap (go-back-N). At larger transfers this multiplies the wire bytes (2.0x the KV at 128 tokens).",
+      f: [["Experiment B, 128 tokens", "leaf1 ethernet-1/10 in-discarded +389 · rxe_p rcvd_seq_err +17 · rxe_d out_of_seq_request +17"],
           ["Never fatal", "retry_exceeded_err 0"]] },
     { t: "6. Decode", w: "0 frames", flows: [],
       s: "When the last immediate has arrived, decode holds the whole cache. It rebuilds the cache object, emits token 0, then decodes greedily. The correctness test is that these tokens equal the tokens a colocated run produces from the same prompt.",
-      f: [["Time at 32 tokens", "kv_ready 478 ms, TTFT 483 ms, unpack 3.9 ms"],
+      f: [["Time at 32 tokens", "kv_ready 348 ms, TTFT 351 ms, unpack 2.0 ms"],
           ["Proof (128 tokens)", "KV crc32 e9051a60 on colocated, prefill and decode. Tokens identical"],
           ["Control", "Decode ignores the KV: tokens diverge"]] },
   ];
@@ -428,7 +428,7 @@ ip.dsfield.dscp == 26 &amp;&amp; ip.dsfield.ecn == 3   # CE marks (none here)</p
   // ---------- frame anatomy ----------
   const ETH = ["Eth", 14, "Ethertype 0x0800. Captured on prefill eth1, so no 802.1Q tag"];
   const IP = ["IPv4", 20, "DSCP 26, ECN 2 (ECT(0)) from traffic_class 0x6a. TTL 64 leaving prefill, 61 arriving from decode. Protocol 17"];
-  const UDP = ["UDP", 8, "dport 4791 (RoCEv2). sport is per QP (60325, 60656), which is the ECMP entropy"];
+  const UDP = ["UDP", 8, "dport 4791 (RoCEv2). sport is per QP (55183, 55830), which is the ECMP entropy"];
   const BTH = ["BTH", 12, "Opcode, P_Key 0xffff, destination QP (24 bit), PSN (24 bit), AckReq bit"];
   const RETH = ["RETH", 16, "Remote VA and rkey of decode's slab, and DMA length 737,280 B for the whole stripe"];
   const IMM = ["ImmDt", 4, "32-bit immediate; consumes a receive WQE on decode and generates a completion"];
@@ -436,9 +436,9 @@ ip.dsfield.dscp == 26 &amp;&amp; ip.dsfield.ecn == 3   # CE marks (none here)</p
   const ICRC = ["ICRC", 4, "Invariant CRC computed by rxe over the fields that do not change hop by hop"];
   const FRAMES = [
     ["WRITE First", 6, 4170, [ETH, IP, UDP, BTH, RETH, ["Payload", 4096, "First 4096 B of the stripe"], ICRC], "2 frames", "captured (ideal 2)"],
-    ["WRITE Middle", 7, 4154, [ETH, IP, UDP, BTH, ["Payload", 4096, "Next 4096 B; the address is implied by PSN order"], ICRC], "457 frames", "captured (ideal 356)"],
-    ["WRITE Last w/ Imm", 9, 4158, [ETH, IP, UDP, BTH, IMM, ["Payload", 4096, "737,280 = 180 x 4096, so the final frame is a full 4096 B"], ICRC], "4 frames", "captured (ideal 2)"],
-    ["Acknowledge", 17, 62, [ETH, IP, UDP, BTH, AETH, ICRC], "7 frames", "captured"],
+    ["WRITE Middle", 7, 4154, [ETH, IP, UDP, BTH, ["Payload", 4096, "Next 4096 B; the address is implied by PSN order"], ICRC], "655 frames", "captured (ideal 356)"],
+    ["WRITE Last w/ Imm", 9, 4158, [ETH, IP, UDP, BTH, IMM, ["Payload", 4096, "737,280 = 180 x 4096, so the final frame is a full 4096 B"], ICRC], "5 frames", "captured (ideal 2)"],
+    ["Acknowledge", 17, 62, [ETH, IP, UDP, BTH, AETH, ICRC], "10 frames", "captured"],
   ];
   const frameEl = document.getElementById("frame");
   let segSel = "RETH";
@@ -465,38 +465,40 @@ ip.dsfield.dscp == 26 &amp;&amp; ip.dsfield.ecn == 3   # CE marks (none here)</p
 
   // ---------- worksheet tables ----------
   table("t-opcodes", ["Opcode", "Ideal", "Captured", "Ratio"], [
-    ["6 WRITE First", "2", "2", "1.0x"], ["7 WRITE Middle", "356", "457", "1.3x"],
-    ["9 WRITE Last w/ Imm", "2", "4", "2.0x"], ["17 Acknowledge", "n/a", "7", "n/a"]],
+    ["6 WRITE First", "2", "2", "1.0x"], ["7 WRITE Middle", "356", "655", "1.8x"],
+    ["9 WRITE Last w/ Imm", "2", "5", "2.5x"], ["17 Acknowledge", "n/a", "10", "n/a"]],
     { right: [1, 2, 3], tone: ["", "warn", "warn", ""] });
   table("t-conv", ["Source", "Destination", "Frames", "Bytes"], [
-    ["10.10.1.2:60325", "10.10.2.2:4791", "243", "1,009 kB"], ["10.10.1.2:60656", "10.10.2.2:4791", "220", "913 kB"],
-    ["10.10.2.2:60656", "10.10.1.2:4791", "4", "248 B"], ["10.10.2.2:60325", "10.10.1.2:4791", "3", "186 B"],
-    ["10.10.2.2:54852", "10.10.1.2:29500 (TCP)", "42", "3,611 B"]], { right: [2, 3] });
+    ["10.10.1.2:55830", "10.10.2.2:4791", "373", "1,549 kB"], ["10.10.1.2:55183", "10.10.2.2:4791", "289", "1,200 kB"],
+    ["10.10.2.2:55830", "10.10.1.2:4791", "5", "310 B"], ["10.10.2.2:55183", "10.10.1.2:4791", "5", "310 B"],
+    ["10.10.2.2:43552", "10.10.1.2:29500 (TCP)", "41", "3,545 B"], ["10.10.2.2:43550", "10.10.1.2:29500 (TCP)", "2", "128 B"]], { right: [2, 3] });
   table("t-mark", ["Observation", "Value"], [
-    ["DSCP / ECN, prefill to decode", "26 / 2 (ECT(0)), TTL 64, 463 frames"],
-    ["DSCP / ECN, decode to prefill", "26 / 2 (ECT(0)), TTL 61, 7 frames"],
+    ["DSCP / ECN, prefill to decode", "26 / 2 (ECT(0)), TTL 64, 662 frames"],
+    ["DSCP / ECN, decode to prefill", "26 / 2 (ECT(0)), TTL 61, 10 frames"],
     ["CE marks", "0, the software datapath does not model queue-depth ECN"],
-    ["Spine interface bytes", "spine1 0.8 MB, spine2 0.9 MB (counter deltas)"]]);
+    ["Spine interface bytes", "spine1 1.0 MB, spine2 1.4 MB (counter deltas)"]]);
   table("t-correct", ["Check", "Result"], [
     ["KV crc32: colocated, prefill, decode", "e9051a60 on all three"],
     ["Generated tokens vs colocated", "identical"],
     ["Control: decode discards the KV", "diverges, so the KV carries the state"],
-    ["Wire bytes", "20.7 MB for 5.9 MB of KV (3.5x), 5,151 frames"]],
+    ["Wire bytes", "12.0 MB for 5.9 MB of KV (2.0x), 2,928 frames"]],
     { tone: ["ok", "ok", "ok", "warn"] });
   table("t-dtype", ["dtype", "KV (MB)", "wire (MB)", "wire/kv", "exposed (ms)"], [
-    ["fp32", "23.6", "70.7", "3.00", "1,891"], ["fp16", "11.8", "31.2", "2.64", "748"]], { right: [1, 2, 3, 4] });
+    ["fp32", "23.6", "44.1", "1.87", "1,033"], ["fp16", "11.8", "21.3", "1.81", "492"]], { right: [1, 2, 3, 4] });
   table("t-chan", ["Channels", "wire/kv", "exposed (ms)", "spine1 / spine2 (MB)"], [
-    ["1", "2.89", "2,342", "48.7 / 0.0"], ["2", "2.83", "1,684", "49.5 / 0.0"], ["4", "4.03", "2,054", "45.1 / 12.1"]], { right: [1, 2, 3] });
+    ["1", "1.62", "923", "34.2 / 0.0"], ["2", "2.09", "1,056", "0.0 / 42.4"], ["4", "3.20", "1,379", "51.5 / 0.0"]], { right: [1, 2, 3] });
   table("t-delay", ["Delay", "wire/kv", "exposed (ms)", "leaf discards"], [
-    ["0 ms", "2.41", "1,346", "2,063"], ["5 ms", "2.60", "1,426", "3,019"], ["20 ms", "3.23", "2,856", "5,261"]], { right: [1, 2, 3] });
+    ["0 ms", "2.41", "1,352", "2,458"], ["5 ms", "2.01", "1,125", "1,528"], ["20 ms", "1.76", "1,660", "1,503"]], { right: [1, 2, 3] });
   table("t-tcp", ["Transport", "wire/kv", "exposed (ms)", "leaf discards"], [
-    ["RoCEv2 (unpaced)", "3.06", "1,977", "5,936"], ["TCP", "1.03", "410", "0"]], { right: [1, 2, 3], tone: ["warn", "ok"] });
+    ["RoCEv2 (unpaced)", "1.59", "832", "882"], ["TCP", "1.02", "272", "20"]], { right: [1, 2, 3], tone: ["warn", "ok"] });
   table("t-fail", ["Observation", "Value"], [
-    ["Affected transfer", "6.4 s, about 2.1 to 2.5 s above the other four"],
-    ["Route while down", "10.10.2.0/24 via 192.168.11.1 only (spine1)"],
-    ["ECMP restored", "2 next-hops after about 12 s of polling"],
-    ["retry_exceeded_err", "0 on both sides, no QP errored, no request restarted"],
-    ["Counters over 5 requests", "rxe_p seq errors +22, retries +53; rxe_d duplicates +4,111"]]);
+    ["Cost of the failure", "between nothing and about 2.8 s; every request completed correctly"],
+    ["Run 1", "req 2 transfer normal (3,976 ms); decode got the first token 2.4 s after the KV was ready (TCP store crosses the fabric)"],
+    ["Run 2", "no visible effect (req 2 transfer 4,064 ms)"],
+    ["Run 3", "req 2 transfer 6,716 ms, 2.8 s above the other four"],
+    ["Why it varies", "each transfer opens new QPs with new UDP ports, so whether its flows used the failed uplink depends on the hash (likely, not measured)"],
+    ["Route while down", "10.10.2.0/24 via 192.168.12.1 only; 2 next-hops after 20, 30 and 26 s of polling"],
+    ["retry_exceeded_err", "0 on both sides: no QP errored, no request restarted"]]);
   table("t-speed", ["KV cache", "Bytes", "100 Gb/s", "400 Gb/s", "800 Gb/s", "1.6 Tb/s"], [
     ["SmolLM2-135M, 512 tokens, fp32", "23.6 MB", "1.89 ms", "0.47 ms", "0.24 ms", "0.12 ms"],
     ["Llama-3-8B-class (32 layers, 8 KV heads, head dim 128), 8,192 tokens, fp16", "1.07 GB", "85.9 ms", "21.5 ms", "10.7 ms", "5.4 ms"]],
@@ -559,35 +561,37 @@ ip.dsfield.dscp == 26 &amp;&amp; ip.dsfield.ecn == 3   # CE marks (none here)</p
   const A = "var(--qpa)", B = "var(--qpb)", W_ = "var(--warn)", OK = "var(--ok)", NE = "var(--neutral)";
   const CATS = ["colocated", "bulk", "layerwise", "layerwise + pace 300M"];
   barChart("ch-c128", CATS, [
-    { name: "prefill_ms", data: [1004, 951, 1809, 1009], color: A },
-    { name: "exposed_transfer_ms", data: [0, 543, 172, 6], color: W_ }], { stacked: true, suffix: " ms", yl: "Time (ms)", xl: "Configuration (disaggregated unless colocated)" });
+    { name: "prefill_ms", data: [698, 761, 1208, 769], color: A },
+    { name: "exposed_transfer_ms", data: [0, 299, 163, 6], color: W_ }], { stacked: true, suffix: " ms", yl: "Time (ms)", xl: "Configuration (disaggregated unless colocated)" });
   barChart("ch-c512", CATS, [
-    { name: "prefill_ms", data: [5451, 5313, 4289, 7002], color: A },
-    { name: "exposed_transfer_ms", data: [0, 1909, 226, 158], color: W_ }], { stacked: true, suffix: " ms", yl: "Time (ms)", xl: "Configuration (disaggregated unless colocated)" });
+    { name: "prefill_ms", data: [2773, 3018, 2950, 3089], color: A },
+    { name: "exposed_transfer_ms", data: [0, 1354, 194, 102], color: W_ }], { stacked: true, suffix: " ms", yl: "Time (ms)", xl: "Configuration (disaggregated unless colocated)" });
 
   const TOK = ["32", "128", "512", "1024"];
   barChart("ch-bytes", TOK, [
     { name: "KV payload (MB)", data: [1.5, 5.9, 23.6, 47.2], color: A },
-    { name: "RoCEv2 on the wire (MB)", data: [3.4, 24.4, 82.5, 143.0], color: W_ }], { suffix: " MB", yl: "Megabytes", xl: "Prompt length (tokens)" });
-  barChart("ch-exposed", TOK, [{ name: "exposed_transfer_ms", data: [61, 805, 2431, 3471], color: A }], { suffix: " ms", yl: "Exposed transfer (ms)", xl: "Prompt length (tokens)" });
+    { name: "RoCEv2 on the wire (MB)", data: [4.3, 11.5, 52.5, 74.5], color: W_ }], { suffix: " MB", yl: "Megabytes", xl: "Prompt length (tokens)" });
+  barChart("ch-exposed", TOK, [{ name: "exposed_transfer_ms", data: [171, 381, 1278, 1643], color: A }], { suffix: " ms", yl: "Exposed transfer (ms)", xl: "Prompt length (tokens)" });
 
   barChart("ch-mode-x", ["run 1", "run 2", "run 3"], [
-    { name: "bulk", data: [1797, 1671, 1857], color: W_ },
-    { name: "layerwise", data: [373, 375, 708], color: OK }], { suffix: " ms", yl: "Exposed transfer (ms)", xl: "Repetition" });
+    { name: "bulk", data: [676, 1400, 787], color: W_ },
+    { name: "layerwise", data: [194, 432, 245], color: OK }], { suffix: " ms", yl: "Exposed transfer (ms)", xl: "Repetition" });
   barChart("ch-mode-t", ["run 1", "run 2", "run 3"], [
-    { name: "bulk", data: [6757, 5073, 6571], color: W_ },
-    { name: "layerwise", data: [4158, 7346, 7018], color: OK }], { suffix: " ms", yl: "TTFT (ms)", xl: "Repetition" });
+    { name: "bulk", data: [3623, 5247, 3608], color: W_ },
+    { name: "layerwise", data: [4848, 3451, 3435], color: OK }], { suffix: " ms", yl: "TTFT (ms)", xl: "Repetition" });
 
   const PC = ["off", "60", "100", "150", "200", "300", "400"];
   barChart("ch-pace", PC, [
-    { name: "measured exposed_transfer_ms", data: [1722, 3187, 1918, 1312, 1064, 1009, 665], color: A },
+    { name: "measured exposed_transfer_ms", data: [895, 3184, 2036, 1433, 1025, 653, 593], color: A },
     { name: "KV bytes / rate (arithmetic)", data: [0, 3146, 1888, 1259, 944, 629, 472], color: NE }], { suffix: " ms", values: false, yl: "Time (ms)", xl: "Pacing rate (Mbit/s)" });
-  barChart("ch-wirekv", PC, [{ name: "wire/kv", data: [2.94, 1.01, 1.01, 1.04, 1.12, 1.43, 1.36], color: W_ }],
+  barChart("ch-wirekv", PC, [{ name: "wire/kv", data: [1.64, 1.01, 1.04, 1.06, 1.06, 1.03, 1.19], color: W_ }],
     { ref: { v: 1, label: "1.0 = no resend" }, yl: "Wire bytes / KV bytes", xl: "Pacing rate (Mbit/s)" });
 
   barChart("ch-fail", ["req 0", "req 1", "req 2 (link down)", "req 3", "req 4"],
-    [{ name: "exposed_transfer_ms", data: [4279, 3951, 6372, 3883, 3877], color: A }],
-    { suffix: " ms", ref: { v: 3900, label: "steady about 3.9 s" }, yl: "Exposed transfer (ms)", xl: "Request" });
+    [{ name: "run 1", data: [4091, 3832, 3976, 3899, 3832], color: A },
+     { name: "run 2", data: [3922, 3828, 4064, 3827, 3826], color: B },
+     { name: "run 3", data: [3913, 3910, 6716, 3963, 3827], color: W_ }],
+    { suffix: " ms", values: false, ref: { v: 3900, label: "steady about 3.9 s" }, yl: "Exposed transfer (ms)", xl: "Request" });
 })();
 </script>
 </body>

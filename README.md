@@ -68,7 +68,7 @@ sequenceDiagram
 
 ## Results
 
-Everything below was measured in this lab and the raw output is in `outputs/` (file names in brackets). The host is a shared 10-vCPU VM running other workloads (load average 15 to 22 during the runs), so **absolute milliseconds move by tens of percent between runs**. In the same configuration, `prefill_ms` for 512 tokens ranged from 3.3 s to 7.0 s across the sweep rows. Read the ratios, the byte counts and the exposed transfer time (the network part, which is far steadier) rather than the single TTFT numbers.
+Everything below was measured in this lab and the raw output is in `outputs/` (file names in brackets). The final numbers come from a **quiet host**: the other CPU-heavy container on the VM (`try-c9s-control-plane`, a kind cluster using about 180 % of a CPU) was paused with `docker pause` for the runs and resumed afterwards. An earlier pass with it running (load average 15 to 22) gave prefill times of 4.3 to 7.0 s for 512 tokens, against 2.7 to 3.1 s when it was paused, so the loaded numbers were wrong by up to 2x. That pass is kept for comparison in `outputs/expC-ttft-*-loaded-host.txt`. The host still runs the SR Linux software datapath spinners (`sr_xdp_lc`, about 4 cores), so **single runs still vary by tens of percent**: that is why Experiments C and E repeat each configuration and show every run.
 
 ### Experiment A: anatomy of one request on the wire (32 tokens, fp32, bulk, 2 channels) [`expA-*`]
 
@@ -76,14 +76,14 @@ The KV slab is 1,474,560 B (32 tokens x 46,080 B). It was pushed as two 737,280 
 
 | Observation | Value |
 | --- | --- |
-| RoCEv2 frames, both directions | 513 frames, 1,927,648 B (1.31x the KV bytes) |
-| Data frames (opcodes 6, 7, 9) | 463. The ideal is 360 = 2 stripes x (1 First + 178 Middle + 1 Last), so 103 were retransmitted |
-| Conversations | `10.10.1.2:60325 -> 10.10.2.2:4791` 243 frames, `10.10.1.2:60656 -> 10.10.2.2:4791` 220 frames. A different UDP source port per QP is the ECMP entropy |
-| First WRITE frames | opcode 6 (First) with RETH `dmalen 737280` on each QP, destination QPs `0xa6` and `0xa7`, then opcode 7 (Middle) frames. Last frames are opcode 9 (WRITE Last with Immediate) |
+| RoCEv2 frames, both directions | 672 frames, 2,750,620 B (**1.87x** the KV bytes) |
+| Data frames (opcodes 6, 7, 9) | 662. The ideal is 360 = 2 stripes x (1 First + 178 Middle + 1 Last), so 302 were retransmitted |
+| Conversations | `10.10.1.2:55830 -> 10.10.2.2:4791` 373 frames, `10.10.1.2:55183 -> 10.10.2.2:4791` 289 frames. A different UDP source port per QP is the ECMP entropy |
+| First WRITE frames | opcode 6 (First) with RETH `dmalen 737280` on each QP, destination QPs `0x143` and `0x144`, then opcode 7 (Middle) frames. The last frame of a stripe is opcode 9 (WRITE Last with Immediate) |
 | Marking | DSCP 26, ECN 2 (ECT(0)), TTL 64 leaving prefill and 61 arriving from decode, so three routed hops. No CE marks |
-| ECMP | spine1 carried 0.8 MB and spine2 0.9 MB: the two QPs hashed to different spines |
-| TCP | 42 frames, 3,611 B: the TCP store carries only the spec, the MR address and rkey, the first token and "done" |
-| Timing | prefill 420 ms, `push_done` 475 ms, exposed transfer 52 ms, decode TTFT 483 ms |
+| ECMP | spine1 carried 1.0 MB and spine2 1.4 MB: the two QPs hashed to different spines |
+| TCP | 43 frames, 3,673 B: the TCP store carries only the spec, the MR address and rkey, the first token and "done" |
+| Timing | prefill 218 ms, `push_done` 348 ms, exposed transfer 129 ms, decode TTFT 351 ms |
 
 ### Experiment B: is the answer after the handoff the same answer? (128 tokens, fp32, bulk) [`expB-*`]
 
@@ -93,95 +93,106 @@ The KV slab is 1,474,560 B (32 tokens x 46,080 B). It was pushed as two 737,280 
 | Generated token ids, disaggregated vs colocated | identical |
 | Control: decode ignores the received KV (`--control zero-kv`) | tokens diverge, so the KV, and nothing else, carries the state |
 
-The 5,898,240 B KV cost 20,747,871 B on the wire (5,151 frames, **3.5x**), because Soft-RoCE sends at host speed into a software datapath that cannot keep up and recovers with go-back-N. Of that, 4,992 frames were data from prefill and 117 were ACKs or NAKs. Only 3.5 KB was TCP. leaf1 `ethernet-1/10` discarded 1,876 packets during the run. `rxe` on prefill counted 32 more sequence errors (`rcvd_seq_err`) and 36 more completer retries, and decode counted 47 more duplicate requests and 34 more out-of-sequence requests, which is go-back-N at work (`retry_exceeded_err` stayed 0). In this run both QPs hashed to the same spine (spine1 12.2 MB, spine2 0 MB): with two flows there is a 50 % chance of a collision, which is why `channels` is a knob.
+The 5,898,240 B KV cost 11,982,912 B of RoCEv2 on the wire (2,928 frames, **2.03x**): 2,884 data frames against an ideal 1,440, plus 44 ACKs or NAKs. TCP was 3.6 KB. leaf1 `ethernet-1/10` discarded 389 packets during the run. `rxe` on prefill counted 17 more sequence errors and 17 more completer retries, and decode counted 17 more out-of-sequence requests (`retry_exceeded_err` stayed 0), which is go-back-N at work. Both QPs were spread over both spines (5.3 MB and 5.0 MB). The prefill time in this run (1,167 ms against 665 ms colocated) was taken with `tcpdump` running and is not representative: Experiment C has no capture and shows 761 ms against 698 ms.
 
-### Experiment C: time to first token, colocated vs disaggregated (medians of 3) [`expC-ttft-128.txt`, `expC-ttft-512.txt`]
+### Experiment C: time to first token, colocated vs disaggregated (medians of 5) [`expC-ttft-128.txt`, `expC-ttft-512.txt`]
 
 | Prompt | Configuration | TTFT (ms) | prefill (ms) | exposed transfer (ms) |
 | --- | --- | ---: | ---: | ---: |
-| 128 tokens | colocated | 1004 | 1004 | 0 |
-| 128 tokens | disaggregated, bulk | 1508 | 951 | 543 |
-| 128 tokens | disaggregated, layerwise | 1901 | 1809 | 172 |
-| 128 tokens | disaggregated, layerwise, paced 300 Mbit/s | 1019 | 1009 | 6 |
-| 512 tokens | colocated | 5451 | 5451 | 0 |
-| 512 tokens | disaggregated, bulk | 7567 | 5313 | 1909 |
-| 512 tokens | disaggregated, layerwise | 4928 | 4289 | 226 |
-| 512 tokens | disaggregated, layerwise, paced 300 Mbit/s | 7058 | 7002 | 158 |
+| 128 tokens | colocated | 698 | 698 | 0 |
+| 128 tokens | disaggregated, bulk | 1,076 | 761 | 299 |
+| 128 tokens | disaggregated, layerwise | 1,415 | 1,208 | 163 |
+| 128 tokens | disaggregated, layerwise, paced 300 Mbit/s | 812 | 769 | 6 |
+| 512 tokens | colocated | 2,773 | 2,773 | 0 |
+| 512 tokens | disaggregated, bulk | 4,427 | 3,018 | 1,354 |
+| 512 tokens | disaggregated, layerwise | 3,394 | 2,950 | 194 |
+| 512 tokens | disaggregated, layerwise, paced 300 Mbit/s | 3,225 | 3,089 | 102 |
 
-What holds up despite the noise: with bulk push the handoff adds **about 0.5 s (128 tokens) and 1.9 s (512 tokens)** of exposed transfer on top of prefill, and layer-by-layer push cuts the exposed part to 6 to 226 ms because the WRITEs overlap the forward pass. What does not hold up: the TTFT ordering between layerwise and colocated. In the 512-token rows the `prefill_ms` of the *same* computation ranges from 4.3 s to 7.0 s, which is larger than any difference between the configurations, and Soft-RoCE does its protocol work on the caller's CPU, so layerwise overlap competes with the forward pass for the same cores. On GPUs with RDMA NICs that competition does not exist. **Splitting prefill and decode is not automatically faster for the first token**; it only pays when the handoff is small compared with the work it separates.
+512 tokens, every run (ms):
+
+| Run | colocated TTFT | bulk TTFT (exposed) | layerwise TTFT (exposed) | layerwise + pace 300 TTFT (exposed) |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 2,773 | 4,008 (1,256) | 3,059 (35) | 3,225 (102) |
+| 2 | 2,726 | 4,427 (1,354) | 3,180 (191) | 2,957 (31) |
+| 3 | 2,701 | 3,928 (920) | 3,394 (450) | 3,553 (201) |
+| 4 | 3,956 | 5,429 (1,479) | 4,393 (194) | 4,487 (102) |
+| 5 | 3,474 | 5,177 (1,410) | 3,473 (575) | 3,010 (20) |
+
+What the data supports:
+
+* **Splitting is not automatically faster.** Colocated had the lowest TTFT in 4 of 5 runs at 512 tokens, and the disaggregated TTFT is the colocated prefill plus whatever of the transfer is still exposed.
+* **Bulk push is always the slowest** (5 of 5 runs): it adds about 0.3 s at 128 tokens (+54 % TTFT) and about 1.35 s at 512 tokens (+60 %), the whole transfer sitting after prefill.
+* **Layer-by-layer push hides most of the transfer** (exposed 6 to 575 ms), and **layerwise with pacing is the best disaggregated configuration**, +16 % over colocated at both lengths (and below colocated in run 5). Unpaced layerwise at 128 tokens is worse than bulk (1,415 ms): its `prefill_ms` rises to 1,208 ms because Soft-RoCE's retransmission work runs on the same CPU as the forward pass. On GPUs with RDMA NICs that competition does not exist.
 
 ### Experiment D: sweeps, one variable at a time (512 tokens unless noted) [`sweeps.txt`]
 
-`wire/kv` is wire bytes divided by KV bytes. Every row passed `tokens_and_kv_match`.
+`wire/kv` is wire bytes divided by KV bytes. Every row passed `tokens_and_kv_match`. These are single runs, so differences under about 30 % are noise (Experiment E repeats one row three times to show the spread).
 
 | Sweep | Value | KV (MB) | wire/kv | exposed transfer (ms) | leaf discards |
 | --- | --- | ---: | ---: | ---: | ---: |
-| prompt length | 32 | 1.5 | 2.30 | 61 | 326 |
-| prompt length | 128 | 5.9 | 4.14 | 805 | 2,421 |
-| prompt length | 512 | 23.6 | 3.50 | 2,431 | 7,004 |
-| prompt length | 1024 | 47.2 | 3.03 | 3,471 | 9,938 |
-| KV dtype | fp32 | 23.6 | 3.00 | 1,891 | 4,052 |
-| KV dtype | fp16 | 11.8 | 2.64 | 748 | 1,905 |
-| channels (RC QPs) | 1 | 23.6 | 2.89 | 2,342 | 4,124 |
-| channels (RC QPs) | 2 | 23.6 | 2.83 | 1,684 | 3,599 |
-| channels (RC QPs) | 4 | 23.6 | 4.03 | 2,054 | 8,105 |
+| prompt length | 32 | 1.5 | 2.90 | 171 | 284 |
+| prompt length | 128 | 5.9 | 1.95 | 381 | 444 |
+| prompt length | 512 | 23.6 | 2.23 | 1,278 | 1,962 |
+| prompt length | 1024 | 47.2 | 1.58 | 1,643 | 1,360 |
+| KV dtype | fp32 | 23.6 | 1.87 | 1,033 | 1,757 |
+| KV dtype | fp16 | 11.8 | 1.81 | 492 | 656 |
+| channels (RC QPs) | 1 | 23.6 | 1.62 | 923 | 807 |
+| channels (RC QPs) | 2 | 23.6 | 2.09 | 1,056 | 1,472 |
+| channels (RC QPs) | 4 | 23.6 | 3.20 | 1,379 | 3,770 |
 
-* KV bytes grow linearly with the prompt (46,080 B per token). fp16 halves the KV bytes and cuts the exposed transfer by 2.5x; the fp16 tokens still match the colocated fp16 reference.
-* More channels did not help here. The software datapath is the bottleneck, not the number of QPs, and with 4 QPs there were more retransmissions (wire/kv 4.03). In the 1- and 2-channel rows all flows landed on spine1 (49 MB / 0 MB), so the ECMP benefit of more QPs depends on the hash, not on the count.
+* KV bytes grow linearly with the prompt (46,080 B per token) and the exposed transfer grows with them. fp16 halves the KV bytes and the exposed transfer (2.1x); the fp16 tokens still match the colocated fp16 reference.
+* **More channels made it worse, not better.** The bottleneck is the software datapath, not a single QP: wire/kv rose from 1.62 to 3.20 and the exposed transfer from 923 to 1,379 ms. In all three rows every flow landed on a single spine (spine1, spine2 and spine1 respectively), even with 4 QPs, so extra QPs did not buy any ECMP spread: that depends on the hash, not the QP count.
 
 ### Experiment E: bulk vs layerwise push, three repetitions (512 tokens) [`sweeps.txt`]
 
-| Mode | exposed transfer, runs 1/2/3 (ms) | TTFT, runs 1/2/3 (ms) |
-| --- | --- | --- |
-| bulk | 1,797 / 1,671 / 1,857 | 6,757 / 5,073 / 6,571 |
-| layerwise | 373 / 375 / 708 | 4,158 / 7,346 / 7,018 |
+| Mode | exposed transfer, runs 1/2/3 (ms) | TTFT, runs 1/2/3 (ms) | prefill, runs 1/2/3 (ms) | wire/kv, runs 1/2/3 |
+| --- | --- | --- | --- | --- |
+| bulk | 676 / 1,400 / 787 | 3,623 / 5,247 / 3,608 | 2,902 / 3,785 / 2,770 | 1.63 / 2.35 / 1.85 |
+| layerwise | 194 / 432 / 245 | 4,848 / 3,451 / 3,435 | 4,595 / 2,979 / 3,151 | 3.42 / 2.97 / 2.54 |
 
-Layerwise reduces the exposed transfer by 62 to 79 % in every repetition. TTFT is inconclusive: layerwise has both the best (4,158 ms) and the worst (7,346 ms) run, because its `prefill_ms` (3,740 / 6,915 / 6,269) includes the CPU cost of posting WRITEs and of Soft-RoCE's receive and ACK work on the same host. The bulk `prefill_ms` was 4,868 / 3,342 / 4,655.
+Layerwise cut the exposed transfer by 69 to 71 % in every repetition. Its TTFT was better than bulk in 2 of 3 runs; the exception is run 1, where its `prefill_ms` spiked to 4,595 ms. Layerwise also put more bytes on the wire (2.5 to 3.4x against 1.6 to 2.4x), because several WRITEs overlap and overflow the software datapath more often. Note the spread inside one configuration: the bulk exposed transfer ranged from 676 to 1,400 ms.
 
 ### Experiment F: loss, pacing, delay and transport (512 tokens) [`sweeps.txt`]
 
-| Sender pacing (`tc tbf`) | wire/kv | leaf discards | exposed transfer (ms) | ideal KV / rate (ms) |
+| Sender pacing (`tc tbf`) | wire/kv | leaf discards | exposed transfer (ms) | KV / rate (ms, arithmetic) |
 | --- | ---: | ---: | ---: | ---: |
-| off | 2.94 | 5,141 | 1,722 | n/a |
-| 60 Mbit/s | 1.01 | 0 | 3,187 | 3,146 |
-| 100 Mbit/s | 1.01 | 0 | 1,918 | 1,888 |
-| 150 Mbit/s | 1.04 | 0 | 1,312 | 1,259 |
-| 200 Mbit/s | 1.12 | 19 | 1,064 | 944 |
-| 300 Mbit/s | 1.43 | 97 | 1,009 | 629 |
-| 400 Mbit/s | 1.36 | 10 | 665 | 472 |
+| off | 1.64 | 962 | 895 | n/a |
+| 60 Mbit/s | 1.01 | 0 | 3,184 | 3,146 |
+| 100 Mbit/s | 1.04 | 0 | 2,036 | 1,888 |
+| 150 Mbit/s | 1.06 | 0 | 1,433 | 1,259 |
+| 200 Mbit/s | 1.06 | 2 | 1,025 | 944 |
+| 300 Mbit/s | 1.03 | 0 | 653 | 629 |
+| 400 Mbit/s | 1.19 | 31 | 593 | 472 |
 
-The last column is arithmetic (23,592,960 B x 8 / rate), not a measurement. Below about 200 Mbit/s the transfer takes the time the pacer allows and the fabric drops nothing, so the wire carries the KV once (1.01x). Unpaced, the same KV takes about 1.7 s and the wire carries it three times. This is the job that DCQCN or PFC does on a real fabric. The software datapath here does not mark ECN, so pacing is the only available rate control and it has to be set by hand.
+The last column is arithmetic (23,592,960 B x 8 / rate), not a measurement. At 60 to 300 Mbit/s the transfer takes close to the time the pacer allows (within 15 %) and the fabric drops nothing, so the wire carries the KV once (1.01 to 1.06x). **Pacing at 300 Mbit/s beat unpaced on both counts**: 653 ms against 895 ms exposed transfer (and 24.3 MB against 38.8 MB on the wire). At 400 Mbit/s the loss starts again (31 discards, 1.19x). The knee of this software datapath is therefore between 300 and 400 Mbit/s. Below it, pacing trades time for zero loss; this is the job that DCQCN or PFC does on a real fabric, and with no ECN here it has to be set by hand.
 
 | Other variable | Value | wire/kv | exposed transfer (ms) | leaf discards |
 | --- | --- | ---: | ---: | ---: |
-| netem delay on decode | 0 ms | 2.41 | 1,346 | 2,063 |
-| netem delay on decode | 5 ms | 2.60 | 1,426 | 3,019 |
-| netem delay on decode | 20 ms | 3.23 | 2,856 | 5,261 |
-| transport | RoCEv2 RDMA WRITE (unpaced) | 3.06 | 1,977 | 5,936 |
-| transport | TCP (same fabric, same bytes) | 1.03 | 410 | 0 |
+| netem delay on decode | 0 ms | 2.41 | 1,352 | 2,458 |
+| netem delay on decode | 5 ms | 2.01 | 1,125 | 1,528 |
+| netem delay on decode | 20 ms | 1.76 | 1,660 | 1,503 |
+| transport | RoCEv2 RDMA WRITE (unpaced) | 1.59 | 832 | 882 |
+| transport | TCP (same fabric, same bytes) | 1.02 | 272 | 20 |
 
-Added delay raised the exposed transfer more than the delay itself (20 ms of delay added about 1.5 s), consistent with go-back-N having to wait out round trips before each resend; this lab did not isolate that mechanism. **TCP beat unpaced Soft-RoCE by about 5x** on this fabric, because TCP's congestion control slows down on loss and Soft-RoCE has none. This is a statement about Soft-RoCE on a software datapath with no PFC or DCQCN, not about RoCE on a lossless AI fabric.
+Delay: no clear effect up to 5 ms, and +23 % at 20 ms over the 0 ms row; the 0 ms row itself (1,352 ms) is higher than the other unpaced rows in this sweep (832 to 1,278 ms), so delay effects of this size are inside the run-to-run noise. **TCP finished about 3x faster than unpaced Soft-RoCE** (272 against 832 ms) on this fabric, because TCP's congestion control backs off on loss and Soft-RoCE has none. This is a statement about Soft-RoCE on a software datapath with no PFC or DCQCN, not about RoCE on a lossless fabric.
 
-### Experiment G: a spine link fails in the middle of a KV transfer [`failover.txt`, `failover-rxe-*.txt`]
+### Experiment G: a spine link fails in the middle of a KV transfer [`failover.txt`, `failover-repeat2.txt`, `failover-repeat3.txt`]
 
-Five 1024-token requests, paced at 100 Mbit/s. During the third transfer, 1.5 s after it started, `leaf1 ethernet-1/2` (the uplink that had carried transfer #2) was administratively disabled and re-enabled 16.6 s later.
+Five 1024-token requests, paced at 100 Mbit/s. The script learns which leaf1 uplink the transfers use from transfer #2, then disables it (`leaf1 ethernet-1/1`) 1.5 s into transfer #3 and re-enables it about 16.5 s later. Three runs, with the third request's cost compared with the other four:
 
-| Request | exposed transfer (ms) | KV crc32 |
-| --- | ---: | --- |
-| 0 | 4,279 | `db7b0412` |
-| 1 | 3,951 | `db7b0412` |
-| 2 (link down 1.5 s in) | 6,372 | `db7b0412` |
-| 3 | 3,883 | `db7b0412` |
-| 4 | 3,877 | `db7b0412` |
+| Run | req 2 exposed transfer (ms) | other four, exposed transfer (ms) | req 2 TTFT minus KV-ready (ms) | tokens and KV crc32 |
+| --- | ---: | --- | ---: | --- |
+| 1 | 3,976 | 3,832 to 4,091 | 2,387 | identical, `db7b0412` |
+| 2 | 4,064 | 3,826 to 3,922 | 9 | identical, `db7b0412` |
+| 3 | 6,716 | 3,827 to 3,963 | 9 | identical, `db7b0412` |
 
-* The affected transfer (request 2) took 6.4 s, about 2.1 to 2.5 s longer than the other four, then completed. Every request produced identical tokens and an identical KV crc32.
-* leaf1 withdrew the spine2 path (one next-hop left: `10.10.2.0/24 via 192.168.11.1`). Two next-hops returned about 12 s of polling after the link was re-enabled.
-* `retry_exceeded_err` stayed 0 on both sides: the RC retry budget outlasted the reroute, so no QP went into the error state and no request had to be restarted.
-* Over these five requests `rxe_p` counted 22 more sequence errors and 53 more completer retries, and `rxe_d` counted 4,111 more duplicate requests.
+* **The failure costs between nothing and about 2.8 s, and every request completes correctly.** In run 3 the transfer itself took 2.8 s longer. In run 1 the transfer was not slower, but decode received the first token 2.4 s after the KV was ready; the first token travels over the TCP store, which also crosses the fabric. In run 2 nothing was visible. The three runs differ because every transfer opens new QPs with new UDP source ports, so whether its flows were on the failed uplink depends on the hash. The counters do not show which flows crossed the dead link, so this attribution is a likely explanation, not a measured one.
+* After the fault, leaf1 had one next-hop for `10.10.2.0/24` (`via 192.168.12.1`). Two next-hops returned 20, 30 and 26 s of polling after the link was re-enabled.
+* `retry_exceeded_err` stayed 0 on both sides: the RC retry budget outlasted the reroute, so no QP went into the error state and no request had to be restarted. In run 1 prefill counted 15 more sequence errors and 13 more completer retries, and decode counted 142 more duplicate requests.
 
 ### What a faster fabric would change (arithmetic, not measured)
 
-The measured fabric moves the KV at roughly 0.1 to 0.5 Gbit/s, which is why the transfer is visible at all. For the handoff alone, at line rate and ignoring protocol overhead:
+The measured fabric moves the KV at roughly 0.2 to 0.7 Gbit/s, which is why the transfer is visible at all. For the handoff alone, at line rate and ignoring protocol overhead:
 
 | KV cache | Bytes | 100 Gb/s | 400 Gb/s | 800 Gb/s | 1.6 Tb/s |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -314,20 +325,21 @@ Either way, containerlab runs SR Linux's control plane and a software forwarding
 ## What this does NOT test
 
 * **No GPUs and none of the production stack.** No vLLM, NIXL, UCX, GPUDirect RDMA, NVLink or a real RDMA NIC. The KV bytes are real (a real model's attention state) and so are the RoCEv2 frames, but the model runs on CPU and the transport is Soft-RoCE written through pyverbs.
-* **Absolute speed.** Soft-RoCE and the SR Linux software datapath run at roughly 0.1 to 0.5 Gbit/s here. Use the ratios (`wire/kv`, exposed transfer against KV size, paced against unpaced) and the correctness checks, not the milliseconds, as evidence. The "What a faster fabric would change" table is arithmetic.
+* **Absolute speed.** Soft-RoCE and the SR Linux software datapath run at roughly 0.2 to 0.7 Gbit/s here. Use the ratios (`wire/kv`, exposed transfer against KV size, paced against unpaced) and the correctness checks, not the milliseconds, as evidence. The "What a faster fabric would change" table is arithmetic.
 * **No ECN, DCQCN or PFC.** The QoS profile is configured and the queues exist, but the software datapath never marked a frame CE (Experiment A, 0 CE), so there is no congestion feedback and the sender has to be paced by hand. A lossless fabric would show far less of the go-back-N amplification seen here.
 * **Multi-tenant interference.** One request at a time, one prefill and one decode worker. Many prefill workers incasting into one decode worker, head-of-line effects and tail latency under load are not tested.
 * **Real model scale.** 135M parameters with 3 KV heads gives a small KV (46,080 B per token). Production models with more layers and heads, long contexts, paged KV blocks and prefix caching change the size, the number and the shape of the transfers.
-* **Noisy shared host.** The VM ran at a load average of 15 to 22 during the runs. `prefill_ms` for the same computation varied by about 2x, so single TTFT numbers and the layerwise-vs-colocated ordering are not conclusive.
+* **A fully quiet host.** The final runs paused the one other heavy container, but the VM is still shared and the SR Linux software datapath keeps about 4 cores busy. Single runs vary by tens of percent (colocated 512-token TTFT ranged from 2,701 to 3,956 ms), so the experiments repeat and the README shows every run where the ordering matters.
 
 ## Notes and gotchas
 
+* **Time on a busy host is wrong, not just noisy.** With another workload running (load average 15 to 22), the same 512-token prefill took 4.3 to 7.0 s instead of 2.7 to 3.1 s. Pause other CPU-heavy containers before measuring (`docker pause <name>`, `docker unpause <name>` afterwards). `scripts/run-all.sh` documents this, and `outputs/expC-ttft-*-loaded-host.txt` keeps the loaded-host pass for comparison.
 * **Poll loops must sleep.** An early version busy-polled completions on the same cores as the forward pass and made prefill about 2x slower at 128 tokens. `POLL_SLEEP` (0.5 ms) in `app/kv_transport.py` fixed it. The evidence for the artifact is kept in `outputs/artifact-busypoll-ttft-128.txt`.
 * **A rare hang.** Once in the runs the prefill process vanished silently and decode waited forever. It did not reproduce in six tries. `run.sh --wait` therefore supervises both sides (a lone survivor for 30 s, or a 900 s timeout, kills the run, prints the logs and retries once on a new store port), and the workers run with `faulthandler` enabled.
 * **The KV is compared before it is trusted.** `crc32` of the slab on both sides and the generated token ids against a colocated reference at the same KV dtype (the colocated path quantizes at the same point). A zero-KV control must diverge.
 * **Tokens must match at fp16 only because the reference quantizes too.** fp16 KV is lossy in general; the check compares like with like.
 * **`sr_cli` startup costs about 2.8 s per call,** so the failover script keeps one persistent session and learns the uplink in use from earlier transfers.
-* **ECMP is a hash.** Two QPs can land on the same spine (they did in Experiments B and in the 1- and 2-channel rows). Counters in `fabric.sh` show where each run went.
+* **ECMP is a hash.** Two QPs can land on the same spine (in the channel sweep every flow used a single spine, even with 4 QPs). Counters in `fabric.sh` show where each run went.
 * **The clabernetes manifest in `c9s/` was generated but not deployed or tested.** The 260 MB model does not fit in a ConfigMap, so the manifest excludes the `models` bind and the model has to be supplied inside the cluster (for example from a volume).
 * **Soft-RoCE needs the `rdma_rxe` kernel module on the host** and uses the caller's CPU for protocol work, so `TORCH_THREADS` (default 4) and the host load affect the numbers.
 

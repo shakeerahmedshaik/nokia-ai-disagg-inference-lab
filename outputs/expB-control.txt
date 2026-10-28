@@ -1,11 +1,11 @@
 ===== decode /tmp/infer.log
-role=decode model=SmolLM2-135M layers=30 kv_heads=3 head_dim=64 load_s=1.0 threads=4 weights_checksum=-13334.434612
-roce dev=rxe_d gid_index=1 gid=0000:0000:0000:0000:0000:ffff:0a0a:0202 qpn=[170, 171] peer_gid=0000:0000:0000:0000:0000:ffff:0a0a:0102 peer_qpn=[170, 171] channels=2 tclass=0x6a (DSCP 26, ECN 2)
-role=decode req=0 prompt_tokens=128 kv_dtype=fp32 kv_bytes=5898240 mode=bulk channels=2 transport=roce control=zero-kv kv_ready_ms=1820.02 ttft_ms=1820.04 unpack_ms=6.28 writes_received=2 kv_crc32=ef409957 kv_checksum=0.000000 itl_mean_ms=180.27 itl_p50_ms=176.68 itl_max_ms=286.73
+role=decode model=SmolLM2-135M layers=30 kv_heads=3 head_dim=64 load_s=0.8 threads=4 weights_checksum=-13334.434612
+roce dev=rxe_d gid_index=1 gid=0000:0000:0000:0000:0000:ffff:0a0a:0202 qpn=[327, 328] peer_gid=0000:0000:0000:0000:0000:ffff:0a0a:0102 peer_qpn=[327, 328] channels=2 tclass=0x6a (DSCP 26, ECN 2)
+role=decode req=0 prompt_tokens=128 kv_dtype=fp32 kv_bytes=5898240 mode=bulk channels=2 transport=roce control=zero-kv kv_ready_ms=1580.44 ttft_ms=1580.44 unpack_ms=4.77 writes_received=2 kv_crc32=ef409957 kv_checksum=0.000000 itl_mean_ms=167.83 itl_p50_ms=178.64 itl_max_ms=238.98
 role=decode req=0 generated_ids=[253, 17626, 47506, 35724, 288, 325, 7146, 1639, 15078, 684, 15078, 15078, 15078, 15078, 1391, 335, 2018, 563, 34130, 15078, 15078, 18976, 15078, 15078, 15078, 15078, 15078, 15078, 1506, 3686, 1506, 1506]
 role=decode req=0 text=' a noqajamUX to be forthgenomicservomicsomicsomicsomics project on All about genomicsomicsomics Collinsomicsomicsomicsomicsomicsomicsiansiosiansians'
 ===== prefill /tmp/infer.log
-role=prefill model=SmolLM2-135M layers=30 kv_heads=3 head_dim=64 load_s=0.9 threads=4 weights_checksum=-13334.434612
-roce dev=rxe_p gid_index=1 gid=0000:0000:0000:0000:0000:ffff:0a0a:0102 qpn=[170, 171] peer_gid=0000:0000:0000:0000:0000:ffff:0a0a:0202 peer_qpn=[170, 171] channels=2 tclass=0x6a (DSCP 26, ECN 2)
-role=prefill req=0 prompt_tokens=128 kv_dtype=fp32 kv_bytes=5898240 bytes_per_token=46080 mode=bulk channels=2 transport=roce prefill_ms=1318.29 pack_ms=3.91 push_done_ms=1814.59 exposed_transfer_ms=492.39 kv_crc32=e9051a60 kv_checksum=-24789.118727 first_token=253
-role=prefill req=0 decode_ttft_ms=1820.04 decode_kv_crc32=ef409957 decode_unpack_ms=6.28
+role=prefill model=SmolLM2-135M layers=30 kv_heads=3 head_dim=64 load_s=1.5 threads=4 weights_checksum=-13334.434612
+roce dev=rxe_p gid_index=1 gid=0000:0000:0000:0000:0000:ffff:0a0a:0102 qpn=[327, 328] peer_gid=0000:0000:0000:0000:0000:ffff:0a0a:0202 peer_qpn=[327, 328] channels=2 tclass=0x6a (DSCP 26, ECN 2)
+role=prefill req=0 prompt_tokens=128 kv_dtype=fp32 kv_bytes=5898240 bytes_per_token=46080 mode=bulk channels=2 transport=roce prefill_ms=1275.77 pack_ms=5.07 push_done_ms=1574.37 exposed_transfer_ms=293.53 kv_crc32=e9051a60 kv_checksum=-24789.118727 first_token=253
+role=prefill req=0 decode_ttft_ms=1580.44 decode_kv_crc32=ef409957 decode_unpack_ms=4.77

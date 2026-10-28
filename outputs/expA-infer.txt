@@ -1,11 +1,11 @@
 ===== decode /tmp/infer.log
-role=decode model=SmolLM2-135M layers=30 kv_heads=3 head_dim=64 load_s=1.3 threads=4 weights_checksum=-13334.434612
-roce dev=rxe_d gid_index=1 gid=0000:0000:0000:0000:0000:ffff:0a0a:0202 qpn=[166, 167] peer_gid=0000:0000:0000:0000:0000:ffff:0a0a:0102 peer_qpn=[166, 167] channels=2 tclass=0x6a (DSCP 26, ECN 2)
-role=decode req=0 prompt_tokens=32 kv_dtype=fp32 kv_bytes=1474560 mode=bulk channels=2 transport=roce control=none kv_ready_ms=477.96 ttft_ms=483.16 unpack_ms=3.86 writes_received=2 kv_crc32=691e9abb kv_checksum=-6788.167752 itl_mean_ms=191.27 itl_p50_ms=185.45 itl_max_ms=245.61
+role=decode model=SmolLM2-135M layers=30 kv_heads=3 head_dim=64 load_s=0.6 threads=4 weights_checksum=-13334.434612
+roce dev=rxe_d gid_index=1 gid=0000:0000:0000:0000:0000:ffff:0a0a:0202 qpn=[323, 324] peer_gid=0000:0000:0000:0000:0000:ffff:0a0a:0102 peer_qpn=[323, 324] channels=2 tclass=0x6a (DSCP 26, ECN 2)
+role=decode req=0 prompt_tokens=32 kv_dtype=fp32 kv_bytes=1474560 mode=bulk channels=2 transport=roce control=none kv_ready_ms=347.93 ttft_ms=350.68 unpack_ms=2.01 writes_received=2 kv_crc32=691e9abb kv_checksum=-6788.167752 itl_mean_ms=53.14 itl_p50_ms=51.72 itl_max_ms=63.54
 role=decode req=0 generated_ids=[282, 8649, 359, 2362, 288, 253, 6064, 897]
 role=decode req=0 text=' of requests are sent to a server every'
 ===== prefill /tmp/infer.log
-role=prefill model=SmolLM2-135M layers=30 kv_heads=3 head_dim=64 load_s=1.0 threads=4 weights_checksum=-13334.434612
-roce dev=rxe_p gid_index=1 gid=0000:0000:0000:0000:0000:ffff:0a0a:0102 qpn=[166, 167] peer_gid=0000:0000:0000:0000:0000:ffff:0a0a:0202 peer_qpn=[166, 167] channels=2 tclass=0x6a (DSCP 26, ECN 2)
-role=prefill req=0 prompt_tokens=32 kv_dtype=fp32 kv_bytes=1474560 bytes_per_token=46080 mode=bulk channels=2 transport=roce prefill_ms=420.12 pack_ms=2.34 push_done_ms=474.76 exposed_transfer_ms=52.29 kv_crc32=691e9abb kv_checksum=-6788.167752 first_token=282
-role=prefill req=0 decode_ttft_ms=483.16 decode_kv_crc32=691e9abb decode_unpack_ms=3.86
+role=prefill model=SmolLM2-135M layers=30 kv_heads=3 head_dim=64 load_s=0.6 threads=4 weights_checksum=-13334.434612
+roce dev=rxe_p gid_index=1 gid=0000:0000:0000:0000:0000:ffff:0a0a:0102 qpn=[323, 324] peer_gid=0000:0000:0000:0000:0000:ffff:0a0a:0202 peer_qpn=[323, 324] channels=2 tclass=0x6a (DSCP 26, ECN 2)
+role=prefill req=0 prompt_tokens=32 kv_dtype=fp32 kv_bytes=1474560 bytes_per_token=46080 mode=bulk channels=2 transport=roce prefill_ms=217.57 pack_ms=1.34 push_done_ms=347.72 exposed_transfer_ms=128.81 kv_crc32=691e9abb kv_checksum=-6788.167752 first_token=282
+role=prefill req=0 decode_ttft_ms=350.68 decode_kv_crc32=691e9abb decode_unpack_ms=2.01

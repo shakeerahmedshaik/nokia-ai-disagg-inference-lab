@@ -1,18 +1,26 @@
-run=1 disagg-bulk ttft_ms=5368.17 prefill_ms=3795.23 exposed_transfer_ms=1520.41 itl_mean_ms=101.64
-run=1 disagg-layerwise ttft_ms=4928.26 prefill_ms=4288.72 exposed_transfer_ms=593.84 itl_mean_ms=83.08
-run=1 disagg-layerwise-paced300 ttft_ms=10213.47 prefill_ms=9974.96 exposed_transfer_ms=186.92 itl_mean_ms=351.20
-run=1 colocated ttft_ms=5451.14 prefill_ms=5451.14 itl_mean_ms=229.69
-run=2 disagg-bulk ttft_ms=7567.11 prefill_ms=5313.33 exposed_transfer_ms=2201.14 itl_mean_ms=232.80
-run=2 disagg-layerwise ttft_ms=9416.03 prefill_ms=9157.88 exposed_transfer_ms=190.29 itl_mean_ms=242.72
-run=2 disagg-layerwise-paced300 ttft_ms=7057.66 prefill_ms=7002.20 exposed_transfer_ms=1.34 itl_mean_ms=269.17
-run=2 colocated ttft_ms=5431.02 prefill_ms=5431.02 itl_mean_ms=250.72
-run=3 disagg-bulk ttft_ms=8054.41 prefill_ms=6062.30 exposed_transfer_ms=1908.71 itl_mean_ms=234.12
-run=3 disagg-layerwise ttft_ms=3972.52 prefill_ms=3704.34 exposed_transfer_ms=226.46 itl_mean_ms=79.95
-run=3 disagg-layerwise-paced300 ttft_ms=3854.61 prefill_ms=3661.64 exposed_transfer_ms=158.08 itl_mean_ms=74.48
-run=3 colocated ttft_ms=6285.45 prefill_ms=6285.45 itl_mean_ms=275.92
-## medians over 3 runs, prompt_tokens=512
+run=1 disagg-bulk ttft_ms=4008.44 prefill_ms=2706.94 exposed_transfer_ms=1255.60 itl_mean_ms=71.15
+run=1 disagg-layerwise ttft_ms=3058.68 prefill_ms=2983.37 exposed_transfer_ms=34.86 itl_mean_ms=72.40
+run=1 disagg-layerwise-paced300 ttft_ms=3225.36 prefill_ms=3089.03 exposed_transfer_ms=102.28 itl_mean_ms=73.21
+run=1 colocated ttft_ms=2773.42 prefill_ms=2773.42 itl_mean_ms=64.98
+run=2 disagg-bulk ttft_ms=4426.62 prefill_ms=3018.14 exposed_transfer_ms=1354.24 itl_mean_ms=184.53
+run=2 disagg-layerwise ttft_ms=3180.16 prefill_ms=2949.60 exposed_transfer_ms=190.54 itl_mean_ms=70.82
+run=2 disagg-layerwise-paced300 ttft_ms=2957.40 prefill_ms=2887.35 exposed_transfer_ms=31.29 itl_mean_ms=71.10
+run=2 colocated ttft_ms=2726.02 prefill_ms=2726.02 itl_mean_ms=60.44
+run=3 disagg-bulk ttft_ms=3928.22 prefill_ms=2962.58 exposed_transfer_ms=920.04 itl_mean_ms=72.65
+run=3 disagg-layerwise ttft_ms=3394.17 prefill_ms=2914.15 exposed_transfer_ms=449.61 itl_mean_ms=70.05
+run=3 disagg-layerwise-paced300 ttft_ms=3552.79 prefill_ms=3296.41 exposed_transfer_ms=200.90 itl_mean_ms=239.14
+run=3 colocated ttft_ms=2700.56 prefill_ms=2700.56 itl_mean_ms=69.43
+run=4 disagg-bulk ttft_ms=5429.42 prefill_ms=3900.84 exposed_transfer_ms=1478.54 itl_mean_ms=185.28
+run=4 disagg-layerwise ttft_ms=4393.06 prefill_ms=4161.74 exposed_transfer_ms=194.19 itl_mean_ms=225.21
+run=4 disagg-layerwise-paced300 ttft_ms=4486.67 prefill_ms=4335.70 exposed_transfer_ms=102.37 itl_mean_ms=167.90
+run=4 colocated ttft_ms=3955.62 prefill_ms=3955.62 itl_mean_ms=171.13
+run=5 disagg-bulk ttft_ms=5177.48 prefill_ms=3713.90 exposed_transfer_ms=1410.12 itl_mean_ms=163.68
+run=5 disagg-layerwise ttft_ms=3472.71 prefill_ms=2862.03 exposed_transfer_ms=574.97 itl_mean_ms=71.72
+run=5 disagg-layerwise-paced300 ttft_ms=3010.16 prefill_ms=2955.32 exposed_transfer_ms=19.56 itl_mean_ms=70.22
+run=5 colocated ttft_ms=3474.49 prefill_ms=3474.49 itl_mean_ms=141.77
+## medians over 5 runs, prompt_tokens=512
 config                          ttft_ms   prefill_ms  exposed_transfer_ms  itl_mean_ms
-colocated                       5451.14      5451.14                    0       250.72
-disagg-bulk                     7567.11      5313.33              1908.71       232.80
-disagg-layerwise                4928.26      4288.72               226.46        83.08
-disagg-layerwise-paced300       7057.66      7002.20               158.08       269.17
+colocated                       2773.42      2773.42                    0        69.43
+disagg-bulk                     4426.62      3018.14              1354.24       163.68
+disagg-layerwise                3394.17      2949.60               194.19        71.72
+disagg-layerwise-paced300       3225.36      3089.03               102.28        73.21
